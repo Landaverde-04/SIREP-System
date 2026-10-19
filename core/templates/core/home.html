@@ -1,0 +1,11 @@
+{# Esta pagina hereda toda la estructura de base.html (html, head, navbar, footer) #}
+{% extends "core/base.html" %}
+
+{# Sobreescribe el titulo del <title> en el <head> #}
+{% block titulo %}Inicio - Sistema {% endblock %}
+
+{# Todo lo que va aqui aparece dentro del <main> de base.html #}
+{% block contenido %}
+<h1>Bienvenido al Sistema</h1>
+<p>Demo de gestion de sistemas por Binary Duo.</p>
+{% endblock %}

@@ -1,0 +1,97 @@
+/* Estilos personalizados del sistema */
+
+/* Links del sidebar */
+.sidebar-link {
+    color: rgba(255, 255, 255, 0.65);
+    font-size: 0.9rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+}
+
+.sidebar-link:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.sidebar-link.active {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+}
+
+/* ── Toggle de contraseña ── */
+
+/* Ocultar el boton nativo de revelacion del navegador (Edge, IE, Chrome) */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none;
+}
+
+/* Quitar el icono de validacion de Bootstrap para no solaparse con el toggle */
+input[type="password"].form-control.is-invalid {
+    background-image: none;
+}
+
+/* ── Sidebar responsive ── */
+
+#sidebar {
+    transition: min-width 0.22s ease, max-width 0.22s ease;
+    overflow: hidden;
+}
+
+.sidebar-chevron {
+    transition: transform 0.22s ease;
+}
+
+/* Estado colapsado — escritorio */
+#sidebar.sidebar-collapsed {
+    min-width: 64px !important;
+    max-width: 64px !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-label,
+#sidebar.sidebar-collapsed .sidebar-seccion {
+    display: none !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-link {
+    justify-content: center;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-chevron {
+    transform: rotate(180deg);
+}
+
+/* Móvil: sidebar fuera de pantalla por defecto */
+@media (max-width: 767.98px) {
+    #sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 1045;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease !important;
+        min-width: 240px !important;
+        max-width: 240px !important;
+    }
+
+    #sidebar.sidebar-open {
+        transform: translateX(0);
+    }
+}
+
+/* Backdrop móvil */
+#sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1044;
+    cursor: pointer;
+}
+
+#sidebar-backdrop.show {
+    display: block;
+}
