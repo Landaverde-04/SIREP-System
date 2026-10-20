@@ -35,54 +35,15 @@ de los ajustes específicos de SIREP.
 
 - Python 3.12 y Django; versiones de dependencias en `requirements.txt`.
 - Plantillas de Django, JavaScript y Bootstrap 5.
-- SQLite y variables de entorno mediante `django-environ`.
+- PostgreSQL 18 local, Psycopg y variables de entorno mediante `django-environ`.
 
-## Instalación en Windows PowerShell
+## Instalación y ejecución
 
-Ejecutar desde la raíz del repositorio:
-
-```powershell
-py -3.12 -m venv venv
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item .env.example .env
-```
-
-Generar una clave y copiarla al campo `SECRET_KEY` de `.env`:
-
-```powershell
-.\venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
-
-Preparar la base local, crear la cuenta administrativa y ejecutar:
-
-```powershell
-.\venv\Scripts\python.exe manage.py migrate
-.\venv\Scripts\python.exe manage.py createsuperuser
-.\venv\Scripts\python.exe manage.py runserver
-```
-
-Abrir http://127.0.0.1:8000/ en el navegador.
-
-## Instalación en Linux o WSL
-
-```bash
-python3.12 -m venv venv
-source venv/bin/activate
-python -m pip install -r requirements.txt
-cp .env.example .env
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
-
-Copiar la clave generada a `SECRET_KEY` en `.env`. Luego ejecutar:
-
-```bash
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
-```
-
-Cada integrante utiliza su propia clave y base de datos local. No subir `.env`,
-el entorno virtual ni archivos `.sqlite3` al repositorio.
+Cada integrante crea su propio `venv`, `.env` y base PostgreSQL local.
+La conexión se configura con `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`
+y `DB_PORT`. Los nombres acordados son `sirep_db` y `sirep_user`, con una
+contraseña propia en cada computadora. Al repositorio se
+suben `.env.example`, `requirements.txt`, las migraciones y el código.
 
 ## Convenciones
 
