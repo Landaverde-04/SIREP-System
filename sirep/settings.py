@@ -26,6 +26,10 @@ INSTALLED_APPS = [
     # Apps del proyecto
     'core',
     'seguridad',
+    'administracion',
+    'reservaciones',
+    'pedidos',
+    'cobro',
 ]
 
 MIDDLEWARE = [
@@ -39,7 +43,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'plantilla_django.urls'
+ROOT_URLCONF = 'sirep.urls'
 
 TEMPLATES = [
     {
@@ -56,7 +60,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'plantilla_django.wsgi.application'
+WSGI_APPLICATION = 'sirep.wsgi.application'
 
 
 # Base de datos

@@ -3,8 +3,8 @@
     {# Marca del sistema + botón de colapso #}
     <div class="px-3 py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
         <a href="{% url 'core:home' %}" class="text-white text-decoration-none d-flex align-items-center gap-2 overflow-hidden">
-            <i class="bi bi-capsule-pill fs-5 text-info flex-shrink-0"></i>
-            <span class="fw-semibold sidebar-label text-truncate" style="font-size: 0.95rem;">Sistema</span>
+            <i class="bi bi-cup-hot fs-5 text-info flex-shrink-0"></i>
+            <span class="fw-semibold sidebar-label text-truncate" style="font-size: 0.95rem;">SIREP</span>
         </a>
         <button id="sidebar-toggle"
                 class="btn btn-sm d-flex align-items-center justify-content-center flex-shrink-0 ms-1"
@@ -55,29 +55,6 @@
             </li>
             {% endif %}
             {% endif %}
-
-            {# Seccion Inventario #}
-            <li class="sidebar-seccion mt-3 mb-1 px-3">
-                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Inventario</span>
-            </li>
-
-            <li class="nav-item">
-                <a href="#"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Productos">
-                    <i class="bi bi-box-seam flex-shrink-0"></i>
-                    <span class="sidebar-label">Productos</span>
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a href="#"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Categorías">
-                    <i class="bi bi-tags flex-shrink-0"></i>
-                    <span class="sidebar-label">Categorías</span>
-                </a>
-            </li>
 
         </ul>
     </nav>

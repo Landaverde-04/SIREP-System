@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Administración - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'administracion/css/ejemplo.css' %}">
+{% endblock %}
+
+{% block contenido %}
+{# Plantilla de referencia: usar "administracion/ejemplo.html" al crear una vista. #}
+<div class="ejemplo-modulo">
+    <h1>Administración</h1>
+    <p>Contenido del módulo.</p>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'administracion/js/ejemplo.js' %}"></script>
+{% endblock %}

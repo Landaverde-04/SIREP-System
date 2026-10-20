@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Reservaciones - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/ejemplo.css' %}">
+{% endblock %}
+
+{% block contenido %}
+{# Plantilla de referencia: usar "reservaciones/ejemplo.html" al crear una vista. #}
+<div class="ejemplo-modulo">
+    <h1>Reservaciones</h1>
+    <p>Contenido del módulo.</p>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'reservaciones/js/ejemplo.js' %}"></script>
+{% endblock %}

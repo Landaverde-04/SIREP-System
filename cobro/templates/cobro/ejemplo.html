@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Cobro - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'cobro/css/ejemplo.css' %}">
+{% endblock %}
+
+{% block contenido %}
+{# Plantilla de referencia: usar "cobro/ejemplo.html" al crear una vista. #}
+<div class="ejemplo-modulo">
+    <h1>Cobro</h1>
+    <p>Contenido del módulo.</p>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'cobro/js/ejemplo.js' %}"></script>
+{% endblock %}

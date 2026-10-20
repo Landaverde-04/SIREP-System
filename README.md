@@ -1,137 +1,90 @@
-# 🐍 Plantilla Django — Binary Duo
+# SIREP
 
-> Plantilla base de proyectos Django para el equipo Binary Duo. Incluye
-> apps `core` y `seguridad` ya implementadas, convenciones del equipo y
-> archivo `CLAUDE.md` listo para que Claude Code arranque con contexto
-> completo.
+Sistema de Reservaciones y Pedidos para un Restaurante.
+Proyecto académico de Tecnología Orientada a Objetos TOO115, Universidad de El Salvador.
 
-## 📦 Qué incluye
+SIREP está dirigido al personal del restaurante para gestionar reservaciones,
+el ingreso de clientes, pedidos y cobros, junto con las mesas y el menú.
 
-- **App `core`**: layout base con sidebar, plantilla `base.html`,
-  modelo abstracto `ModeloBase`, archivos estáticos comunes
-- **App `seguridad`**: modelo `Usuario` extendiendo `AbstractUser`,
-  login/logout, CRUD de usuarios, roles via `Group` de Django, cambio
-  de contraseña
-- **Configuración base**: `settings.py` con `django-environ`, idioma
-  español, zona horaria El Salvador, Bootstrap 5 vía CDN
-- **Variables de entorno**: `.env.example` y `.gitignore` listos
-- **Documentación**: `CLAUDE.md` con todo el contexto técnico y
-  convenciones del equipo
+## Estado actual
 
-## 🚀 Cómo usar esta plantilla
+La base proviene de la plantilla Django de Binary Duo. El proyecto interno se
+llama `sirep` y las pantallas comunes ya utilizan la identidad de SIREP.
 
-### Paso 1 — Crear un repo nuevo desde el template
+Las aplicaciones de negocio conservan la estructura estándar de Django e incluyen
+una plantilla de ejemplo en `templates/<app>/ejemplo.html`, junto con sus archivos
+`static/<app>/css/ejemplo.css` y `static/<app>/js/ejemplo.js`, como guía de estructura.
+Los ejemplos no están conectados a vistas ni rutas. Todavía no contienen modelos,
+formularios ni reglas del negocio.
+Cada responsable desarrollará su módulo. La seguridad heredada queda pendiente
+de los ajustes específicos de SIREP.
 
-1. En GitHub, ir a la página principal de este repo
-2. Click en el botón verde **"Use this template"** → **"Create a new repository"**
-3. Llenar:
-   - Owner: tu cuenta o la organización Binary Duo
-   - Repository name: nombre del nuevo proyecto (ej: `sistema-clinica`)
-   - Visibilidad: privado o público según el caso
-4. Click en **"Create repository"**
+## Organización
 
-### Paso 2 — Clonar el nuevo repo en tu máquina
+| Carpeta | Responsabilidad |
+|---|---|
+| `sirep/` | Configuración general del proyecto Django |
+| `core/` | Interfaz común, inicio y modelo abstracto heredado |
+| `seguridad/` | Usuarios, sesiones, grupos y permisos heredados |
+| `administracion/` | Aplicación inicial para mesas, menú y clientes |
+| `reservaciones/` | Aplicación inicial para disponibilidad, reservas e ingreso |
+| `pedidos/` | Aplicación inicial para pedidos, preparación y entrega |
+| `cobro/` | Aplicación inicial para consumo y cobro |
 
-```bash
-cd ~/proyectos
-git clone git@github.com:TU-USUARIO/NOMBRE-DEL-NUEVO-REPO.git
-cd NOMBRE-DEL-NUEVO-REPO
+## Tecnologías
+
+- Python 3.12 y Django; versiones de dependencias en `requirements.txt`.
+- Plantillas de Django, JavaScript y Bootstrap 5.
+- SQLite y variables de entorno mediante `django-environ`.
+
+## Instalación en Windows PowerShell
+
+Ejecutar desde la raíz del repositorio:
+
+```powershell
+py -3.12 -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-### Paso 3 — Renombrar el proyecto Django
+Generar una clave y copiarla al campo `SECRET_KEY` de `.env`:
 
-El proyecto Django interno se llama `plantilla_django`. Hay que renombrarlo
-al nombre real del proyecto.
-
-Hay un script que hace esto automáticamente:
-
-```bash
-chmod +x scripts/renombrar_proyecto.sh
-./scripts/renombrar_proyecto.sh sistema_clinica
+```powershell
+.\venv\Scripts\python.exe -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 ```
 
-⚠️ El nombre debe estar en `snake_case` (minúsculas, sin espacios,
-guiones bajos en lugar de guiones medios).
+Preparar la base local, crear la cuenta administrativa y ejecutar:
 
-El script:
-- Renombra la carpeta `plantilla_django/` al nuevo nombre
-- Reemplaza `plantilla_django` por el nuevo nombre en `manage.py`,
-  `settings.py`, `wsgi.py`, `asgi.py` y `urls.py`
-- Reemplaza también en el `README.md` y otros archivos de configuración
-- Se borra a sí mismo al terminar (la plantilla ya no aplica al proyecto)
+```powershell
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py createsuperuser
+.\venv\Scripts\python.exe manage.py runserver
+```
 
-### Paso 4 — Setup del entorno
+Abrir http://127.0.0.1:8000/ en el navegador.
+
+## Instalación en Linux o WSL
 
 ```bash
-# Crear entorno virtual
-python3 -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate
-
-# Instalar dependencias
-pip install -r requirements.txt
-
-# Configurar variables de entorno
+python -m pip install -r requirements.txt
 cp .env.example .env
-
-# Generar SECRET_KEY y pegarla en .env
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
 
-# Editar .env con la nueva SECRET_KEY
-nano .env
+Copiar la clave generada a `SECRET_KEY` en `.env`. Luego ejecutar:
 
-# Aplicar migraciones
+```bash
 python manage.py migrate
-
-# Crear superusuario
 python manage.py createsuperuser
-
-# Verificar que funciona
 python manage.py runserver
 ```
 
-Abrir `http://127.0.0.1:8000` para verificar.
+Cada integrante utiliza su propia clave y base de datos local. No subir `.env`,
+el entorno virtual ni archivos `.sqlite3` al repositorio.
 
-### Paso 5 — Personalizar el `CLAUDE.md`
+## Convenciones
 
-Abrir el archivo `CLAUDE.md` y completar las secciones marcadas con
-`[COMPLETAR: ...]`:
-
-- Nombre del proyecto y descripción
-- Objetivo y alcance
-- Apps del negocio que se van a crear
-- Equipo
-- Estado inicial del proyecto
-- Enlace al Notion del proyecto
-
-### Paso 6 — Crear el espacio en Notion del proyecto
-
-Crear una nueva sección en el Centro de Documentos Binary Duo con la
-documentación extendida del proyecto. Tomar como referencia la estructura
-del proyecto Sistema Drogueria si se necesita.
-
-### Paso 7 — Primer commit
-
-```bash
-git add .
-git commit -m "chore: configura proyecto desde plantilla Django Binary Duo"
-git push origin main
-```
-
-## 📚 Documentación adicional
-
-Información detallada sobre cómo usar esta plantilla y las decisiones
-técnicas detrás de ella en el Centro de Documentos Binary Duo, sección
-**"Plantilla Django Binary Duo"**.
-
-## 🔄 Actualizar la plantilla
-
-Si el equipo decide mejorar la plantilla (agregar funcionalidades, ajustar
-convenciones), los cambios se hacen directamente en el repo
-`plantilla_django`. Los proyectos existentes que ya nacieron de la
-plantilla **no se actualizan automáticamente**: cada equipo decide si
-quiere portar las mejoras manualmente.
-
-## 👥 Mantenimiento
-
-Equipo Binary Duo. Para sugerencias o reportes, abrir un issue en este
-repositorio.
+La definición de modelos compartidos y las reglas de cada módulo se acordarán
+antes de su implementación.
