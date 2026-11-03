@@ -1,0 +1,23 @@
+/* Módulo de reservaciones */
+
+.paso-titulo {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin-bottom: 0.75rem;
+}
+
+.mesa-opcion {
+    padding: 0.6rem 0.75rem;
+    line-height: 1.25;
+}
+
+.btn-check:checked + .mesa-opcion small {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+#cliente-resultados .list-group-item {
+    font-size: 0.9rem;
+}

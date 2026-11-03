@@ -1,0 +1,73 @@
+{% extends "core/base.html" %}
+{% load static reservaciones_extras %}
+
+{% block titulo %}Registrar ingreso {{ reservacion.codigo }} - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">Registrar ingreso</h4>
+    <a href="{% url 'reservaciones:panel_ingresos' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 760px;">
+    <div class="card-body p-4">
+        {% include "reservaciones/parciales/errores_generales.html" %}
+
+        <div class="alert alert-light border mb-4">
+            <div class="d-flex justify-content-between">
+                <strong>{{ reservacion.cliente.nombre }}</strong>
+                <span class="font-monospace small">{{ reservacion.codigo }}</span>
+            </div>
+            <div class="small text-muted">
+                {{ reservacion.fecha_hora_inicio|time:"H:i" }} ({{ reservacion.duracion_estimada|duracion }}) ·
+                {{ reservacion.cantidad_personas }} personas reservadas · Mesa {{ reservacion.mesa.numero }} ({{ reservacion.mesa.capacidad }} personas)
+            </div>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="row align-items-end">
+                <div class="col-sm-6">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
+                <div class="col-sm-6 mb-3">
+                    <button type="submit" name="accion" value="consultar" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-repeat"></i> Verificar mesa
+                    </button>
+                </div>
+            </div>
+
+            {% if form.is_bound and not form.cantidad_personas.errors %}
+                {% if problema %}
+                    <div class="alert alert-warning d-flex gap-2 align-items-start">
+                        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                        <div>{{ problema }} Asigne otra mesa disponible{% if not mesas %}, o espere y vuelva a verificar{% endif %}.</div>
+                    </div>
+                    {% include "reservaciones/parciales/mesas.html" with seleccion=form.mesa.value|stringformat:"s" campo=form.mesa mensaje_sin_mesas="No hay otras mesas libres con capacidad suficiente en este momento. Informe al cliente; puede esperar y volver a verificar." %}
+                {% else %}
+                    {% for error in form.mesa.errors %}<div class="alert alert-danger">{{ error }}</div>{% endfor %}
+                    <div class="alert alert-success d-flex gap-2 align-items-start">
+                        <i class="bi bi-check-circle-fill mt-1"></i>
+                        <div>La mesa {{ reservacion.mesa.numero }} está libre y tiene capacidad suficiente.</div>
+                    </div>
+                {% endif %}
+
+                {% if not problema or mesas %}
+                <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
+                    <a href="{% url 'reservaciones:panel_ingresos' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                    <button type="submit" name="accion" value="confirmar" class="btn btn-primary btn-sm">
+                        <i class="bi bi-door-open"></i> Confirmar ingreso
+                    </button>
+                </div>
+                {% endif %}
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% endblock %}

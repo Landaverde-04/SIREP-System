@@ -1,0 +1,86 @@
+{% extends "core/base.html" %}
+{% load static reservaciones_extras %}
+
+{% block titulo %}{{ titulo }} - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">{{ titulo }}</h4>
+    <a href="{% if reservacion %}{% url 'reservaciones:detalle_reservacion' reservacion.codigo %}{% else %}{% url 'reservaciones:lista_reservaciones' %}{% endif %}"
+       class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 880px;">
+    <div class="card-body p-4">
+
+        {% include "reservaciones/parciales/errores_generales.html" %}
+
+        {% if reservacion %}
+        <div class="alert alert-light border small mb-4">
+            <div><strong>Cliente:</strong> {{ reservacion.cliente.nombre }} · {{ reservacion.cliente.telefono }}</div>
+            <div><strong>Datos actuales:</strong>
+                {{ reservacion.fecha_hora_inicio|date:"d/m/Y H:i" }} · {{ reservacion.duracion_estimada|duracion }} ·
+                {{ reservacion.cantidad_personas }} personas · Mesa {{ reservacion.mesa.numero }}</div>
+        </div>
+        {% endif %}
+
+        <form method="post" id="form-reservacion" novalidate>
+            {% csrf_token %}
+
+            <h6 class="paso-titulo">1. Fecha, hora y personas</h6>
+            <div class="row">
+                <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.fecha %}</div>
+                <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.hora %}</div>
+                <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.duracion_horas %}</div>
+                <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
+            </div>
+            <button type="submit" name="accion" value="consultar" class="btn btn-outline-primary btn-sm mb-4">
+                <i class="bi bi-search"></i> Consultar mesas disponibles
+            </button>
+
+            {% if mesas is not None %}
+                <h6 class="paso-titulo">2. Mesa</h6>
+                {% if reservacion %}
+                    {% if mesa_asignada_libre %}
+                        <p class="small text-success mb-2"><i class="bi bi-check-circle"></i>
+                            La mesa asignada (mesa {{ reservacion.mesa.numero }}) sigue disponible en este período.</p>
+                    {% else %}
+                        <p class="small text-danger mb-2"><i class="bi bi-x-circle"></i>
+                            La mesa asignada (mesa {{ reservacion.mesa.numero }}) ya no está libre o no tiene capacidad suficiente. Seleccione otra.</p>
+                    {% endif %}
+                {% endif %}
+                {% include "reservaciones/parciales/mesas.html" with seleccion=form.mesa.value|stringformat:"s" campo=form.mesa mesa_actual=reservacion.mesa %}
+
+                {% if form.pedir_cliente %}
+                    <h6 class="paso-titulo mt-4">3. Cliente</h6>
+                    {% include "reservaciones/parciales/selector_cliente.html" with campo=form.cliente %}
+                {% endif %}
+
+                {% if mesas %}
+                <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
+                    <a href="{% if reservacion %}{% url 'reservaciones:detalle_reservacion' reservacion.codigo %}{% else %}{% url 'reservaciones:lista_reservaciones' %}{% endif %}"
+                       class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                    <button type="submit" name="accion" value="confirmar" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-lg"></i> {% if reservacion %}Guardar cambios{% else %}Confirmar reservación{% endif %}
+                    </button>
+                </div>
+                {% endif %}
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% include "reservaciones/parciales/modal_cliente.html" %}
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'reservaciones/js/reservaciones.js' %}"></script>
+{% endblock %}

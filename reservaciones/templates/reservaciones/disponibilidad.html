@@ -1,0 +1,70 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Disponibilidad de mesas - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0 fw-semibold">Disponibilidad de mesas</h4>
+    <a href="{% url 'reservaciones:lista_reservaciones' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Reservaciones
+    </a>
+</div>
+
+<form method="get" class="card shadow-sm mb-3" novalidate>
+    <div class="card-body pb-1">
+        <div class="row">
+            <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.fecha %}</div>
+            <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.hora %}</div>
+            <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.duracion_horas %}</div>
+            <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
+        </div>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-search"></i> Consultar</button>
+        </div>
+    </div>
+</form>
+
+{% if mesas is not None %}
+    {% if mesas %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-white small text-muted">
+            {{ mesas|length }} mesa{{ mesas|length|pluralize }} libre{{ mesas|length|pluralize }} el {{ form.cleaned_data.inicio|date:"d/m/Y" }}
+            de {{ form.cleaned_data.inicio|time:"H:i" }} a
+            {% with fin=form.cleaned_data.inicio|add:form.cleaned_data.duracion %}{{ fin|time:"H:i" }}{% endwith %}
+            para {{ form.cleaned_data.cantidad_personas }} personas
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Mesa</th><th class="text-center">Capacidad</th><th>Ubicación</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for mesa in mesas %}
+                    <tr>
+                        <td class="fw-medium">Mesa {{ mesa.numero }}</td>
+                        <td class="text-center">{{ mesa.capacidad }}</td>
+                        <td>{{ mesa.ubicacion|default:"—" }}</td>
+                        <td class="text-end">
+                            {% if perms.reservaciones.add_reservacion %}
+                            <a href="{% url 'reservaciones:crear_reservacion' %}?{{ parametros }}&mesa={{ mesa.pk }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-calendar-plus"></i> Reservar
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning d-flex gap-2 align-items-start">
+        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+        <div>No existen mesas libres con capacidad suficiente en el período consultado. Modifique la fecha, la hora o la duración.</div>
+    </div>
+    {% endif %}
+{% endif %}
+
+{% endblock %}

@@ -31,6 +31,29 @@ de los ajustes específicos de SIREP.
 | `pedidos/` | Aplicación inicial para pedidos, preparación y entrega |
 | `cobro/` | Aplicación inicial para consumo y cobro |
 
+## Módulo de reservaciones
+
+Implementa CU-01 a CU-07: consulta de disponibilidad, registro, modificación,
+cancelación y búsqueda de reservaciones, registro rápido de clientes e ingreso
+del cliente con o sin reservación, que abre la `Atencion` de la mesa.
+
+- Reglas de negocio en `reservaciones/servicios.py` (`ServicioDisponibilidad`,
+  `ServicioReservaciones`, `ServicioIngreso`) y en los modelos.
+- `administracion.Mesa` y `administracion.Cliente` contienen los datos mínimos
+  que necesita el módulo; administración completará sus pantallas.
+- `reservaciones.Atencion` representa la visita a una mesa. Pedidos y cobro se
+  asocian a ella; cobro la cierra con `atencion.cerrar()`, lo que libera la mesa.
+  `Atencion.abierta_de(mesa)` devuelve la atención en curso de una mesa.
+
+Datos de prueba (mesas, clientes y rol «Anfitrión»):
+
+```
+python manage.py migrate
+python manage.py datos_demo_reservaciones
+```
+
+Pruebas automáticas: `python manage.py test reservaciones`.
+
 ## Tecnologías
 
 - Python 3.12 y Django; versiones de dependencias en `requirements.txt`.

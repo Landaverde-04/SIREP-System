@@ -1,0 +1,46 @@
+{# CU-04 Registrar cliente nuevo: modal sobre el caso en curso. #}
+{% if perms.administracion.add_cliente %}
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-labelledby="modalClienteTitulo">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+        <div class="modal-content border-0 shadow">
+            <form id="form-cliente" method="post" action="{% url 'reservaciones:registrar_cliente' %}" novalidate>
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title fs-6 fw-semibold" id="modalClienteTitulo">
+                        <i class="bi bi-person-plus me-1"></i> Registrar cliente nuevo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="cliente-error-general" class="alert alert-danger d-none"></div>
+                    <div class="mb-3">
+                        <label for="cliente-nombre" class="form-label">Nombre</label>
+                        <input type="text" id="cliente-nombre" name="nombre" class="form-control" maxlength="120" autocomplete="off">
+                        <div class="invalid-feedback" data-error="nombre"></div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="cliente-telefono" class="form-label">Teléfono</label>
+                        <input type="text" id="cliente-telefono" name="telefono" class="form-control"
+                               placeholder="7777-8888" inputmode="tel" maxlength="20" autocomplete="off">
+                        <div class="invalid-feedback" data-error="telefono"></div>
+                    </div>
+
+                    <div id="cliente-duplicado" class="alert alert-warning mt-3 mb-0 d-none">
+                        <p class="mb-2">Ya existe un cliente con ese teléfono:</p>
+                        <p class="fw-semibold mb-2" id="cliente-duplicado-datos"></p>
+                        <p class="mb-2">¿Se trata de la misma persona?</p>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-primary" id="cliente-usar-existente">Sí, seleccionarlo</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="cliente-corregir">No, corregir datos</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="cliente-guardar">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
