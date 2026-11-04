@@ -66,6 +66,26 @@ def normalizar_telefono(valor):
     return f'{coincidencia.group(1)}-{coincidencia.group(2)}'
 
 
+CONECTORES_NOMBRE = {'de', 'del', 'la', 'las', 'los', 'y', 'e', 'van', 'von', 'da', 'di'}
+
+
+def normalizar_nombre(valor):
+    """
+    Escribe el nombre con mayúscula inicial en cada palabra y quita espacios
+    sobrantes: "  ana   lÓPEZ de la o " -> "Ana López de la O".
+    Los conectores (de, del, la, y...) quedan en minúscula salvo al inicio.
+    """
+    palabras = (valor or '').split()
+    resultado = []
+    for posicion, palabra in enumerate(palabras):
+        minuscula = palabra.lower()
+        if posicion > 0 and minuscula in CONECTORES_NOMBRE:
+            resultado.append(minuscula)
+        else:
+            resultado.append('-'.join(parte[:1].upper() + parte[1:] for parte in minuscula.split('-')))
+    return ' '.join(resultado)
+
+
 class Cliente(ModeloBase):
     """
     Cliente del restaurante. El anfitrión puede registrarlo rápidamente
@@ -87,10 +107,15 @@ class Cliente(ModeloBase):
 
     def clean(self):
         super().clean()
-        self.nombre = (self.nombre or '').strip()
+        self.nombre = normalizar_nombre(self.nombre)
         if not self.nombre:
             raise ValidationError({'nombre': 'Ingrese el nombre del cliente.'})
         try:
             self.telefono = normalizar_telefono(self.telefono)
         except ValidationError as error:
             raise ValidationError({'telefono': error.messages})
+
+    def save(self, *args, **kwargs):
+        # También se normaliza al guardar desde el admin, la consola o los datos de prueba.
+        self.nombre = normalizar_nombre(self.nombre)
+        super().save(*args, **kwargs)

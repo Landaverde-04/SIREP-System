@@ -15,13 +15,15 @@
                     <div id="cliente-error-general" class="alert alert-danger d-none"></div>
                     <div class="mb-3">
                         <label for="cliente-nombre" class="form-label">Nombre</label>
-                        <input type="text" id="cliente-nombre" name="nombre" class="form-control" maxlength="120" autocomplete="off">
+                        <input type="text" id="cliente-nombre" name="nombre" class="form-control" maxlength="120" autocomplete="off"
+                               autocapitalize="words">
                         <div class="invalid-feedback" data-error="nombre"></div>
                     </div>
                     <div class="mb-2">
                         <label for="cliente-telefono" class="form-label">Teléfono</label>
                         <input type="text" id="cliente-telefono" name="telefono" class="form-control"
-                               placeholder="7777-8888" inputmode="tel" maxlength="20" autocomplete="off">
+                               placeholder="7777-8888" inputmode="numeric" maxlength="9" autocomplete="off">
+                        <div class="form-text">8 dígitos; el guion se agrega solo.</div>
                         <div class="invalid-feedback" data-error="telefono"></div>
                     </div>
 

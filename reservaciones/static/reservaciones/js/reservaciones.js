@@ -86,6 +86,31 @@ document.addEventListener('DOMContentLoaded', function () {
     var btnGuardar    = document.getElementById('cliente-guardar');
     var existente     = null;
 
+    // Teléfono: solo dígitos, máximo 8, con guion después del cuarto (7777-8888).
+    function formatearTelefono(valor) {
+        var digitos = valor.replace(/\D/g, '').slice(0, 8);
+        return digitos.length > 4 ? digitos.slice(0, 4) + '-' + digitos.slice(4) : digitos;
+    }
+    inputTelefono.addEventListener('input', function () {
+        inputTelefono.value = formatearTelefono(inputTelefono.value);
+    });
+
+    // Nombre: mayúscula inicial en cada palabra al salir del campo
+    // (el servidor aplica la misma regla al guardar).
+    var conectores = ['de', 'del', 'la', 'las', 'los', 'y', 'e', 'van', 'von', 'da', 'di'];
+    function formatearNombre(valor) {
+        return valor.trim().split(/\s+/).map(function (palabra, i) {
+            var minuscula = palabra.toLowerCase();
+            if (i > 0 && conectores.indexOf(minuscula) !== -1) return minuscula;
+            return minuscula.split('-').map(function (parte) {
+                return parte.charAt(0).toUpperCase() + parte.slice(1);
+            }).join('-');
+        }).join(' ');
+    }
+    inputNombre.addEventListener('blur', function () {
+        inputNombre.value = formatearNombre(inputNombre.value);
+    });
+
     function limpiarErrores() {
         errorGeneral.classList.add('d-none');
         [inputNombre, inputTelefono].forEach(function (input) { input.classList.remove('is-invalid'); });
@@ -103,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
         mostrarDuplicado(false);
         // Aprovecha lo escrito en la búsqueda.
         var texto = inputBuscar.value.trim();
-        if (/^[\d\s\-+]+$/.test(texto)) { inputTelefono.value = texto; } else { inputNombre.value = texto; }
+        if (/^[\d\s\-+]+$/.test(texto)) { inputTelefono.value = formatearTelefono(texto); } else { inputNombre.value = formatearNombre(texto); }
     });
     modalEl.addEventListener('shown.bs.modal', function () { inputNombre.focus(); });
 

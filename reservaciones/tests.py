@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from administracion.models import Cliente, Mesa, normalizar_telefono
+from administracion.models import Cliente, Mesa, normalizar_nombre, normalizar_telefono
 from seguridad.models import Usuario
 from .models import Atencion, Reservacion
 from .servicios import (
@@ -47,6 +47,22 @@ class TelefonoTests(TestCase):
         for valor in ['', '1234', '5777-8888', '7777-88889', 'abc']:
             with self.assertRaises(ValidationError):
                 normalizar_telefono(valor)
+
+
+class NombreTests(TestCase):
+    def test_mayuscula_inicial_y_conectores(self):
+        casos = {
+            'ana lópez': 'Ana López',
+            '  JOSÉ   DE LA   o ': 'José de la O',
+            'maría-josé del cid': 'María-José del Cid',
+            'de la cruz': 'De la Cruz',
+        }
+        for entrada, esperado in casos.items():
+            self.assertEqual(normalizar_nombre(entrada), esperado)
+
+    def test_cliente_se_guarda_normalizado(self):
+        cliente = Cliente.objects.create(nombre='pedro gómez', telefono='7111-2222')
+        self.assertEqual(cliente.nombre, 'Pedro Gómez')
 
 
 class DisponibilidadTests(DatosBase):
@@ -285,8 +301,9 @@ class VistasTests(DatosBase):
 
     def test_registrar_cliente_rapido_detecta_duplicado(self):
         url = reverse('reservaciones:registrar_cliente')
-        respuesta = self.client.post(url, {'nombre': 'María', 'telefono': '22223333'})
+        respuesta = self.client.post(url, {'nombre': 'maría  pérez', 'telefono': '22223333'})
         self.assertEqual(respuesta.status_code, 201)
+        self.assertEqual(respuesta.json()['cliente']['nombre'], 'María Pérez')
         self.assertEqual(respuesta.json()['cliente']['telefono'], '2222-3333')
         respuesta = self.client.post(url, {'nombre': 'Otra María', 'telefono': '2222 3333'})
         self.assertTrue(respuesta.json()['existe'])

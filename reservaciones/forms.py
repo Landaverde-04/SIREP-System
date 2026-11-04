@@ -5,7 +5,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from administracion.models import Cliente, Mesa, normalizar_telefono
+from administracion.models import Cliente, Mesa, normalizar_nombre, normalizar_telefono
 from .models import Reservacion
 from .servicios import ServicioDisponibilidad
 
@@ -146,7 +146,7 @@ class ClienteRapidoForm(forms.ModelForm):
         return normalizar_telefono(self.cleaned_data['telefono'])
 
     def clean_nombre(self):
-        nombre = self.cleaned_data['nombre'].strip()
+        nombre = normalizar_nombre(self.cleaned_data['nombre'])
         if not nombre:
             raise ValidationError('Ingrese el nombre del cliente.')
         return nombre
