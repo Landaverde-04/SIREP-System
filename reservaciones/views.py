@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -8,8 +10,9 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from administracion.models import Cliente
+from .agenda import LineaDeTiempo, proxima_media_hora
 from .forms import (
-    BuscarReservacionForm, CancelarReservacionForm, ClienteRapidoForm, IngresoForm,
+    BuscarReservacionForm, CancelarReservacionForm, ClienteRapidoForm, DisponibilidadForm, IngresoForm,
     PeriodoForm, ReservacionForm,
 )
 from .models import Atencion, Reservacion, formatear_digitos
@@ -74,16 +77,47 @@ def detalle_reservacion(request, codigo):
 @login_required
 @permission_required('reservaciones.view_reservacion', raise_exception=True)
 def consultar_disponibilidad(request):
+    """
+    Mapa de mesas para el período consultado y agenda del día. Sin parámetros
+    muestra la próxima media hora de hoy, para ver de inmediato cómo está el salón.
+    """
     disponibilidad = ServicioDisponibilidad()
-    form = PeriodoForm(request.GET or None, disponibilidad=disponibilidad)
-    mesas = None
-    if form.is_bound and form.is_valid():
-        mesas = _mesas_del_formulario(form, disponibilidad)
-    return render(request, 'reservaciones/disponibilidad.html', {
-        'form': form,
-        'mesas': mesas,
-        'parametros': request.GET.urlencode(),
-    })
+    if 'fecha' in request.GET:
+        form = DisponibilidadForm(request.GET, disponibilidad=disponibilidad)
+    else:
+        inicio = proxima_media_hora(disponibilidad.ahora)
+        form = DisponibilidadForm({'fecha': inicio.date().isoformat(), 'hora': inicio.strftime('%H:%M'),
+                                   'duracion_horas': '2', 'cantidad_personas': ''},
+                                  disponibilidad=disponibilidad)
+
+    contexto = {'form': form}
+    if form.is_valid():
+        datos = form.cleaned_data
+        inicio, duracion, personas = datos['inicio'], datos['duracion'], datos.get('cantidad_personas')
+        estados = disponibilidad.estado_mesas(inicio, duracion, personas)
+        zonas = {}
+        for estado in estados:
+            zonas.setdefault(estado.mesa.ubicacion or 'Sin ubicación', []).append(estado)
+        conteo = {clave: sum(1 for e in estados if e.estado == clave)
+                  for clave in ('libre', 'reservada', 'ocupada', 'pequena')}
+        reservaciones, atenciones = disponibilidad.agenda_del_dia(datos['fecha'])
+        parametros = {'fecha': datos['fecha'].isoformat(), 'hora': datos['hora'].strftime('%H:%M'),
+                      'duracion_horas': str(datos['duracion_horas']).rstrip('0').rstrip('.')}
+        if personas:
+            parametros['cantidad_personas'] = personas
+        contexto.update({
+            'zonas': zonas.items(),
+            'conteo': conteo,
+            'total': len(estados),
+            'inicio': inicio,
+            'fin': inicio + duracion,
+            'personas': personas,
+            'parametros': urlencode(parametros),
+            'agenda': LineaDeTiempo(datos['fecha'], [e.mesa for e in sorted(estados, key=lambda e: e.mesa.numero)],
+                                    reservaciones, atenciones, periodo=(inicio, inicio + duracion),
+                                    ahora=disponibilidad.ahora),
+        })
+    return render(request, 'reservaciones/disponibilidad.html', contexto)
 
 
 # --- CU-01 Registrar reservación ----------------------------------------------
@@ -94,9 +128,12 @@ def crear_reservacion(request):
     disponibilidad = ServicioDisponibilidad()
     if request.method == 'POST':
         form = ReservacionForm(request.POST, disponibilidad=disponibilidad)
-    elif 'fecha' in request.GET:
+    elif 'fecha' in request.GET and request.GET.get('cantidad_personas'):
         # Viene de la consulta de disponibilidad con los datos ya ingresados.
         form = ReservacionForm(request.GET, disponibilidad=disponibilidad)
+    elif 'fecha' in request.GET:
+        # Viene del mapa sin cantidad de personas: se precargan los datos y la mesa elegida.
+        form = ReservacionForm(initial=request.GET.dict(), disponibilidad=disponibilidad)
     else:
         form = ReservacionForm(disponibilidad=disponibilidad)
 

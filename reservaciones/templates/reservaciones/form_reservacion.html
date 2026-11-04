@@ -41,6 +41,7 @@
                 <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.duracion_horas %}</div>
                 <div class="col-sm-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
             </div>
+            {% if mesas is None and form.mesa.value %}<input type="hidden" name="mesa" value="{{ form.mesa.value }}">{% endif %}
             <button type="submit" name="accion" value="consultar" class="btn btn-outline-primary btn-sm mb-4">
                 <i class="bi bi-search"></i> Consultar mesas disponibles
             </button>

@@ -15,10 +15,12 @@ comprometer la misma mesa a la vez, el segundo recibe el aviso de que ya no
 está libre (CU-01 8a, CU-05 6a) en lugar de crear una reservación duplicada.
 """
 
-from datetime import timedelta
+from dataclasses import dataclass
+from datetime import datetime, time, timedelta
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from administracion.models import Mesa
@@ -30,6 +32,26 @@ from .models import (
 # Margen para no rechazar una consulta "para ahora" por los segundos que tarda
 # el anfitrión en enviar el formulario.
 MARGEN_INICIO = timedelta(minutes=5)
+
+
+@dataclass
+class EstadoMesa:
+    """Situación de una mesa en el período consultado (para el mapa de disponibilidad)."""
+    mesa: Mesa
+    estado: str                      # libre | reservada | ocupada | pequena
+    reservacion: Reservacion = None  # la que la compromete, si está reservada
+    atencion: Atencion = None        # la atención en curso, si está ocupada
+
+    ETIQUETAS = {'libre': 'Libre', 'reservada': 'Reservada', 'ocupada': 'Ocupada',
+                 'pequena': 'Capacidad insuficiente'}
+
+    @property
+    def etiqueta(self):
+        return self.ETIQUETAS[self.estado]
+
+    @property
+    def disponible(self):
+        return self.estado == 'libre'
 
 
 class ReglaNegocioError(ValidationError):
@@ -91,7 +113,7 @@ class ServicioDisponibilidad:
             reservaciones = reservaciones.exclude(pk=excluir_reservacion.pk)
         return reservaciones.values('mesa')
 
-    def _mesas_con_atencion(self, inicio):
+    def _atenciones_que_bloquean(self, inicio):
         """
         Una atención abierta ocupa su mesa desde el ingreso hasta que se cobra.
         Para una consulta inmediata, cualquier atención abierta bloquea la mesa;
@@ -100,8 +122,47 @@ class ServicioDisponibilidad:
         """
         atenciones = Atencion.objects.abiertas()
         if inicio > self.ahora + MARGEN_INICIO:
-            atenciones = atenciones.con_fin().filter(fin_estimado__gt=inicio)
-        return atenciones.values('mesa')
+            atenciones = atenciones.con_fin().filter(fin_calculado__gt=inicio)
+        return atenciones
+
+    def _mesas_con_atencion(self, inicio):
+        return self._atenciones_que_bloquean(inicio).values('mesa')
+
+    def estado_mesas(self, inicio, duracion, cantidad_personas=None):
+        """
+        Estado de cada mesa habilitada en el período, con la misma regla que
+        mesas_disponibles(): las "libres" son exactamente las disponibles.
+        Si no se indica la cantidad de personas, no se filtra por capacidad.
+        """
+        fin = inicio + duracion
+        reservadas = {}
+        for reservacion in (Reservacion.objects.programadas().que_se_cruzan(inicio, fin)
+                            .select_related('cliente').order_by('fecha_hora_inicio')):
+            reservadas.setdefault(reservacion.mesa_id, reservacion)
+        ocupadas = {a.mesa_id: a for a in self._atenciones_que_bloquean(inicio).select_related('cliente')}
+
+        resultado = []
+        for mesa in Mesa.objects.filter(activo=True).order_by('ubicacion', 'numero'):
+            if mesa.pk in ocupadas:
+                resultado.append(EstadoMesa(mesa, 'ocupada', atencion=ocupadas[mesa.pk]))
+            elif mesa.pk in reservadas:
+                resultado.append(EstadoMesa(mesa, 'reservada', reservacion=reservadas[mesa.pk]))
+            elif cantidad_personas and not mesa.admite(cantidad_personas):
+                resultado.append(EstadoMesa(mesa, 'pequena'))
+            else:
+                resultado.append(EstadoMesa(mesa, 'libre'))
+        return resultado
+
+    def agenda_del_dia(self, fecha):
+        """Reservaciones programadas y atenciones que ocupan cada mesa durante un día."""
+        dia_inicio = timezone.make_aware(datetime.combine(fecha, time.min))
+        dia_fin = dia_inicio + timedelta(days=1)
+        reservaciones = (Reservacion.objects.programadas().que_se_cruzan(dia_inicio, dia_fin)
+                         .select_related('cliente'))
+        atenciones = (Atencion.objects.filter(fecha_hora_ingreso__lt=dia_fin)
+                      .filter(Q(estado=Atencion.Estado.ABIERTA) | Q(fecha_hora_cierre__gt=dia_inicio))
+                      .select_related('cliente', 'reservacion'))
+        return list(reservaciones), list(atenciones)
 
 
 class ServicioReservaciones:

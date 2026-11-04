@@ -33,7 +33,7 @@ class PeriodoQuerySet(models.QuerySet):
 
     def con_fin(self):
         return self.annotate(
-            fin_estimado=ExpressionWrapper(
+            fin_calculado=ExpressionWrapper(
                 F(self.campo_inicio) + F('duracion_estimada'),
                 output_field=models.DateTimeField(),
             )
@@ -48,7 +48,7 @@ class ReservacionQuerySet(PeriodoQuerySet):
 
     def que_se_cruzan(self, inicio, fin):
         """Reservaciones cuyo período [inicio, fin) se superpone con el indicado (RN-01)."""
-        return self.con_fin().filter(fecha_hora_inicio__lt=fin, fin_estimado__gt=inicio)
+        return self.con_fin().filter(fecha_hora_inicio__lt=fin, fin_calculado__gt=inicio)
 
     def del_dia(self, fecha):
         return self.filter(fecha_hora_inicio__date=fecha)

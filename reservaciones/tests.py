@@ -95,6 +95,16 @@ class DisponibilidadTests(DatosBase):
         # Más tarde, cuando se espera que haya terminado, sí puede reservarse.
         self.assertIn(self.mesa4, self.disponibilidad.mesas_disponibles(ahora + timedelta(hours=3), H2, 2))
 
+    def test_estado_mesas_coincide_con_mesas_disponibles(self):
+        self.reservas.registrar(self.cliente, self.mesa4, momento(hora=19), H2, 2)
+        estados = {e.mesa: e.estado for e in self.disponibilidad.estado_mesas(momento(hora=20), H2, 3)}
+        self.assertEqual(estados, {self.mesa2: 'pequena', self.mesa4: 'reservada', self.mesa6: 'libre'})
+        libres = [m for m, estado in estados.items() if estado == 'libre']
+        self.assertEqual(libres, list(self.disponibilidad.mesas_disponibles(momento(hora=20), H2, 3)))
+        # Sin cantidad de personas no se descarta ninguna por capacidad.
+        sin_personas = {e.mesa: e.estado for e in self.disponibilidad.estado_mesas(momento(hora=20), H2)}
+        self.assertEqual(sin_personas[self.mesa2], 'libre')
+
     def test_rechaza_fecha_pasada_y_duracion_mayor_a_cuatro_horas(self):
         with self.assertRaisesMessage(ReglaNegocioError, 'fecha y hora futuras'):
             self.disponibilidad.validar_periodo(timezone.now() - timedelta(hours=1), H2)
@@ -292,6 +302,16 @@ class VistasTests(DatosBase):
                                                              cliente=self.cliente.pk))
         self.assertIn('ya está reservada', str(respuesta.context['form'].errors['mesa']))
         self.assertEqual(respuesta.context['mesas'], [self.mesa6])
+
+    def test_mapa_de_disponibilidad(self):
+        url = reverse('reservaciones:consultar_disponibilidad')
+        self.assertEqual(self.client.get(url).context['total'], 3)  # sin parámetros: ahora, todas las mesas
+        respuesta = self.client.get(url, self.datos_periodo(cantidad_personas=''))
+        self.assertEqual(respuesta.context['conteo']['libre'], 3)
+        self.reservas.registrar(self.cliente, self.mesa4, momento(hora=19), H2, 2)
+        respuesta = self.client.get(url, self.datos_periodo(cantidad_personas='3'))
+        self.assertEqual(respuesta.context['conteo'], {'libre': 1, 'reservada': 1, 'ocupada': 0, 'pequena': 1})
+        self.assertContains(respuesta, 'agenda-bloque tipo-reservacion')
 
     def test_cancelar_desde_la_vista(self):
         r = self.reservas.registrar(self.cliente, self.mesa4, momento(), H2, 2)

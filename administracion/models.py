@@ -45,6 +45,53 @@ class Mesa(ModeloBase):
     def esta_ocupada(self):
         return self.atenciones.filter(estado='ABIERTA').exists()
 
+    @property
+    def estado(self):
+        """Estado para mostrar: Deshabilitada, Ocupada o Disponible (CU-16)."""
+        if not self.activo:
+            return 'Deshabilitada'
+        return 'Ocupada' if self.esta_ocupada else 'Disponible'
+
+    def reservaciones_pendientes(self):
+        """Reservaciones programadas que todavía no terminan."""
+        from django.db.models import ExpressionWrapper, F
+        from django.utils import timezone
+        return (self.reservaciones.filter(estado='PROGRAMADA', activo=True)
+                .annotate(fin=ExpressionWrapper(F('fecha_hora_inicio') + F('duracion_estimada'),
+                                                output_field=models.DateTimeField()))
+                .filter(fin__gt=timezone.now())
+                .select_related('cliente').order_by('fecha_hora_inicio'))
+
+    def capacidad_minima_requerida(self):
+        """Mayor cantidad de personas entre sus reservaciones pendientes (0 si no hay)."""
+        return self.reservaciones_pendientes().aggregate(
+            maximo=models.Max('cantidad_personas'))['maximo'] or 0
+
+    def motivo_para_no_deshabilitar(self):
+        """
+        Una mesa ocupada o con reservaciones pendientes no se deshabilita:
+        primero hay que cobrar la atención o reasignar/cancelar las reservaciones.
+        """
+        if self.esta_ocupada:
+            return f'La mesa {self.numero} está ocupada. Registre el cobro antes de deshabilitarla.'
+        pendientes = self.reservaciones_pendientes().count()
+        if pendientes:
+            return (f'La mesa {self.numero} tiene {pendientes} reservación(es) programada(s). '
+                    'Modifíquelas para asignar otra mesa o cancélelas antes de deshabilitarla.')
+        return None
+
+    def deshabilitar(self):
+        """CU-19: deja de ofrecerse para reservaciones e ingresos; conserva su historial."""
+        motivo = self.motivo_para_no_deshabilitar()
+        if motivo:
+            raise ValidationError(motivo, code='mesa_en_uso')
+        self.activo = False
+        self.save(update_fields=['activo', 'fecha_modificacion'])
+
+    def habilitar(self):
+        self.activo = True
+        self.save(update_fields=['activo', 'fecha_modificacion'])
+
 
 TELEFONO_PATRON = re.compile(r'^(?:\+?503)?([267]\d{3})(\d{4})$')
 

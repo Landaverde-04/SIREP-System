@@ -95,6 +95,17 @@ class PeriodoForm(FormularioBase):
         }
 
 
+class DisponibilidadForm(PeriodoForm):
+    """CU-02: la cantidad de personas es opcional; sin ella se muestran todas las mesas."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        campo = self.fields['cantidad_personas']
+        campo.required = False
+        campo.label = 'Personas (opcional)'
+        campo.widget.attrs['placeholder'] = 'Todas'
+
+
 class ReservacionForm(PeriodoForm):
     """
     CU-01 / CU-05. Se envía en dos pasos: "consultar" muestra las mesas

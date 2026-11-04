@@ -3,8 +3,8 @@ Carga datos de prueba para el módulo de reservaciones:
 
     python manage.py datos_demo_reservaciones
 
-Crea (si no existen) mesas, algunos clientes y el rol "Anfitrión" con los
-permisos del módulo. Se puede ejecutar varias veces sin duplicar datos.
+Crea (si no existen) mesas, algunos clientes y los roles "Anfitrión" y
+"Gerente" con sus permisos. Se puede ejecutar varias veces sin duplicar datos.
 Solo para desarrollo y demostración.
 """
 
@@ -32,6 +32,12 @@ PERMISOS_ANFITRION = [
     ('administracion', 'view_mesa'),
 ]
 
+PERMISOS_GERENTE = [
+    ('administracion', 'view_mesa'), ('administracion', 'add_mesa'), ('administracion', 'change_mesa'),
+    ('administracion', 'view_cliente'), ('administracion', 'add_cliente'), ('administracion', 'change_cliente'),
+    ('reservaciones', 'view_reservacion'), ('reservaciones', 'view_atencion'),
+]
+
 
 class Command(BaseCommand):
     help = 'Carga mesas, clientes y el rol Anfitrión para probar el módulo de reservaciones.'
@@ -42,9 +48,9 @@ class Command(BaseCommand):
                     for n, c, u in MESAS)
         clientes = sum(Cliente.objects.get_or_create(telefono=t, defaults={'nombre': n})[1]
                        for n, t in CLIENTES)
-        rol, _ = Group.objects.get_or_create(name='Anfitrión')
-        for app, codigo in PERMISOS_ANFITRION:
-            rol.permissions.add(Permission.objects.get(content_type__app_label=app, codename=codigo))
+        for nombre_rol, permisos in (('Anfitrión', PERMISOS_ANFITRION), ('Gerente', PERMISOS_GERENTE)):
+            rol, _ = Group.objects.get_or_create(name=nombre_rol)
+            for app, codigo in permisos:
+                rol.permissions.add(Permission.objects.get(content_type__app_label=app, codename=codigo))
         self.stdout.write(self.style.SUCCESS(
-            f'Listo: {mesas} mesas y {clientes} clientes nuevos; rol "Anfitrión" con '
-            f'{len(PERMISOS_ANFITRION)} permisos.'))
+            f'Listo: {mesas} mesas y {clientes} clientes nuevos; roles "Anfitrión" y "Gerente" con sus permisos.'))

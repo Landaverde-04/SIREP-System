@@ -15,3 +15,17 @@ def duracion(valor):
     if horas:
         return f'{horas} h'
     return f'{minutos} min'
+
+
+@register.filter
+def sillas(capacidad):
+    """Distribuye las sillas del dibujo de una mesa: la mitad arriba y la mitad abajo (máx. 6 por lado)."""
+    capacidad = int(capacidad or 0)
+    arriba, abajo = (capacidad + 1) // 2, capacidad // 2
+    dibujadas_arriba, dibujadas_abajo = min(arriba, 6), min(abajo, 6)
+    return {
+        'arriba': range(dibujadas_arriba),
+        'abajo': range(dibujadas_abajo),
+        'extra': capacidad - dibujadas_arriba - dibujadas_abajo,
+        'ancho': max(64, max(dibujadas_arriba, 1) * 24 + 16),
+    }

@@ -45,7 +45,14 @@ del cliente con o sin reservación, que abre la `Atencion` de la mesa.
   asocian a ella; cobro la cierra con `atencion.cerrar()`, lo que libera la mesa.
   `Atencion.abierta_de(mesa)` devuelve la atención en curso de una mesa.
 
-Datos de prueba (mesas, clientes y rol «Anfitrión»):
+La consulta de disponibilidad muestra un mapa de mesas por ubicación (libre,
+reservada, ocupada o sin capacidad) y la agenda del día de cada mesa. La
+cantidad de personas es opcional en esa consulta.
+
+Gestión en administración (`/administracion/`): mesas (CU-16 a CU-19) y
+clientes con su historial (CU-24 y CU-25).
+
+Datos de prueba (mesas, clientes y roles «Anfitrión» y «Gerente»):
 
 ```
 python manage.py migrate
