@@ -27,6 +27,46 @@
                 </a>
             </li>
 
+            {# Seccion Administracion: mesas, menu y clientes #}
+            {% if perms.administracion.view_mesa or perms.administracion.view_producto or perms.administracion.view_cliente %}
+            <li class="sidebar-seccion mt-3 mb-1 px-3">
+                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Administración</span>
+            </li>
+
+            {% if perms.administracion.view_mesa %}
+            <li class="nav-item">
+                <a href="{% url 'administracion:lista_mesas' %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Mesas">
+                    <i class="bi bi-grid-3x3-gap flex-shrink-0"></i>
+                    <span class="sidebar-label">Mesas</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% if perms.administracion.view_producto %}
+            <li class="nav-item">
+                <a href="{% url 'administracion:lista_productos' %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Menú">
+                    <i class="bi bi-journal-text flex-shrink-0"></i>
+                    <span class="sidebar-label">Menú</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% if perms.administracion.view_cliente %}
+            <li class="nav-item">
+                <a href="{% url 'administracion:lista_clientes' %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Clientes">
+                    <i class="bi bi-person-lines-fill flex-shrink-0"></i>
+                    <span class="sidebar-label">Clientes</span>
+                </a>
+            </li>
+            {% endif %}
+            {% endif %}
+
             {# Seccion Seguridad: solo se muestra si tiene acceso a al menos un item #}
             {% if perms.seguridad.view_usuario or perms.auth.view_group %}
             <li class="sidebar-seccion mt-3 mb-1 px-3">
