@@ -1,0 +1,180 @@
+{% extends "core/base.html" %}
+{% load static reservaciones_extras %}
+
+{% block titulo %}Disponibilidad de mesas - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0 fw-semibold">Disponibilidad de mesas</h4>
+        {% if inicio %}
+        <small class="text-muted">{{ inicio|date:"l d/m/Y" }}, de {{ inicio|time:"H:i" }} a {{ fin|time:"H:i" }}{% if personas %} · {{ personas }} persona{{ personas|pluralize }}{% endif %}</small>
+        {% endif %}
+    </div>
+    <a href="{% url 'reservaciones:lista_reservaciones' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-list-ul"></i> Reservaciones
+    </a>
+</div>
+
+{# Consulta: los cambios se aplican solos #}
+<form method="get" class="card shadow-sm mb-3" id="form-disponibilidad" novalidate>
+    <div class="card-body pb-1">
+        <div class="row g-2 align-items-start">
+            <div class="col-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.fecha %}</div>
+            <div class="col-6 col-lg-2">{% include "reservaciones/parciales/campo.html" with campo=form.hora %}</div>
+            <div class="col-6 col-lg-3">{% include "reservaciones/parciales/campo.html" with campo=form.duracion_horas %}</div>
+            <div class="col-6 col-lg-2">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
+            <div class="col-12 col-lg-2 d-flex gap-2 mb-3" style="padding-top: 2rem;">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="bi bi-search"></i> Consultar</button>
+                <a href="{% url 'reservaciones:consultar_disponibilidad' %}" class="btn btn-outline-secondary btn-sm" title="Ahora"><i class="bi bi-clock-history"></i></a>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% if zonas %}
+    {# Resumen y filtros #}
+    <div class="d-flex flex-wrap gap-2 mb-2" id="filtros-mesas">
+        <button type="button" class="filtro-estado filtro-todos activo" data-filtro="todas"><span class="punto"></span>Todas · {{ total }}</button>
+        <button type="button" class="filtro-estado estado-libre" data-filtro="libre"><span class="punto"></span>Libres · {{ conteo.libre }}</button>
+        <button type="button" class="filtro-estado estado-reservada" data-filtro="reservada"><span class="punto"></span>Reservadas · {{ conteo.reservada }}</button>
+        <button type="button" class="filtro-estado estado-ocupada" data-filtro="ocupada"><span class="punto"></span>Ocupadas · {{ conteo.ocupada }}</button>
+        {% if personas %}
+        <button type="button" class="filtro-estado estado-pequena" data-filtro="pequena"><span class="punto"></span>Sin capacidad · {{ conteo.pequena }}</button>
+        {% endif %}
+    </div>
+
+    {% if not conteo.libre %}
+    <div class="alert alert-warning d-flex gap-2 align-items-start mt-2">
+        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+        <div>No existen mesas libres{% if personas %} con capacidad suficiente{% endif %} en el período consultado. Cambie la fecha, la hora o la duración.</div>
+    </div>
+    {% endif %}
+
+    {# Mapa de mesas agrupadas por ubicación #}
+    {% for zona, estados in zonas %}
+    <div class="zona" data-zona>
+        <div class="zona-titulo"><i class="bi bi-geo-alt"></i> {{ zona }}</div>
+        <div class="mesa-grid">
+            {% for e in estados %}
+            {% with mesa=e.mesa %}
+            {% if e.disponible and perms.reservaciones.add_reservacion %}
+            <a href="{% url 'reservaciones:crear_reservacion' %}?{{ parametros }}&mesa={{ mesa.pk }}"
+               class="mesa-tile estado-{{ e.estado }}" data-estado="{{ e.estado }}"
+               title="Reservar la mesa {{ mesa.numero }}">
+            {% else %}
+            <div class="mesa-tile estado-{{ e.estado }}" data-estado="{{ e.estado }}">
+            {% endif %}
+                {% include "reservaciones/parciales/dibujo_mesa.html" %}
+                <span class="mesa-estado">{{ e.etiqueta }}</span>
+                <span class="mesa-info">
+                    {{ mesa.capacidad }} persona{{ mesa.capacidad|pluralize }}<br>
+                    {% if e.estado == 'reservada' %}
+                        {{ e.reservacion.fecha_hora_inicio|time:"H:i" }}–{{ e.reservacion.fecha_hora_fin|time:"H:i" }} · {{ e.reservacion.cliente.nombre }}
+                    {% elif e.estado == 'ocupada' %}
+                        Desde {{ e.atencion.fecha_hora_ingreso|time:"H:i" }} · {{ e.atencion.cantidad_personas }} pers.
+                    {% elif e.estado == 'pequena' %}
+                        Necesita {{ personas }} lugares
+                    {% else %}
+                        Disponible en el período
+                    {% endif %}
+                </span>
+                {% if e.disponible and perms.reservaciones.add_reservacion %}
+                    <span class="mesa-accion"><i class="bi bi-calendar-plus"></i> Reservar</span>
+                {% elif e.estado == 'reservada' %}
+                    <span class="mesa-info font-monospace small">{{ e.reservacion.codigo }}</span>
+                {% endif %}
+            {% if e.disponible and perms.reservaciones.add_reservacion %}</a>{% else %}</div>{% endif %}
+            {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {# Agenda del día #}
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-white d-flex flex-wrap gap-3 justify-content-between align-items-center">
+            <span class="fw-semibold"><i class="bi bi-calendar3-week"></i> Agenda del {{ agenda.fecha|date:"d/m/Y" }}</span>
+            <span class="small text-muted d-flex flex-wrap gap-3">
+                <span><span class="d-inline-block rounded" style="width:12px;height:12px;background:#0d6efd"></span> Reservación</span>
+                <span><span class="d-inline-block rounded" style="width:12px;height:12px;background:#e8590c"></span> Atención en curso</span>
+                <span><span class="d-inline-block rounded" style="width:12px;height:12px;background:#adb5bd"></span> Atención cerrada</span>
+                <span><span class="d-inline-block rounded" style="width:12px;height:12px;background:rgba(25,135,84,.25);border:1px solid #198754"></span> Período consultado</span>
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="agenda-scroll">
+            <div class="agenda" style="--paso-hora: {{ agenda.paso_hora }}%;">
+                <div class="agenda-fila border-0">
+                    <div class="agenda-etiqueta"></div>
+                    <div class="agenda-horas">
+                        {% for h in agenda.horas %}<span style="left: {{ h.pos }}%">{{ h.texto }}</span>{% endfor %}
+                    </div>
+                </div>
+                {% for fila in agenda.filas %}
+                <div class="agenda-fila">
+                    <div class="agenda-etiqueta">Mesa {{ fila.mesa.numero }} <small>({{ fila.mesa.capacidad }})</small></div>
+                    <div class="agenda-pista">
+                        {% if agenda.periodo %}<div class="agenda-periodo" style="left: {{ agenda.periodo.izq }}%; width: {{ agenda.periodo.ancho }}%"></div>{% endif %}
+                        {% if agenda.ahora %}<div class="agenda-ahora" style="left: {{ agenda.ahora }}%" title="Ahora"></div>{% endif %}
+                        {% for b in fila.bloques %}
+                            {% if b.url %}
+                            <a href="{{ b.url }}" class="agenda-bloque {{ b.clase }}" style="left: {{ b.izq }}%; width: {{ b.ancho }}%" title="{{ b.titulo }}">{{ b.texto }}</a>
+                            {% else %}
+                            <span class="agenda-bloque {{ b.clase }}" style="left: {{ b.izq }}%; width: {{ b.ancho }}%" title="{{ b.titulo }}">{{ b.texto }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">Pase el cursor sobre un bloque para ver el detalle; haga clic en una reservación para abrirla.</p>
+        </div>
+    </div>
+{% elif form.is_bound and not form.errors %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-grid-3x3-gap fs-1 d-block mb-3 opacity-25"></i>
+        <p class="mb-0">No hay mesas habilitadas.</p>
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Filtros por estado
+    var botones = document.querySelectorAll('#filtros-mesas [data-filtro]');
+    botones.forEach(function (boton) {
+        boton.addEventListener('click', function () {
+            botones.forEach(function (b) { b.classList.remove('activo'); });
+            boton.classList.add('activo');
+            var filtro = boton.dataset.filtro;
+            document.querySelectorAll('.mesa-tile[data-estado]').forEach(function (tile) {
+                tile.parentElement && (tile.style.display = (filtro === 'todas' || tile.dataset.estado === filtro) ? '' : 'none');
+            });
+            document.querySelectorAll('[data-zona]').forEach(function (zona) {
+                var visibles = zona.querySelectorAll('.mesa-tile[data-estado]:not([style*="display: none"])').length;
+                zona.style.display = visibles ? '' : 'none';
+            });
+        });
+    });
+
+    // La consulta se actualiza sola al cambiar un dato
+    var form = document.getElementById('form-disponibilidad');
+    var espera;
+    form.querySelectorAll('input').forEach(function (input) {
+        input.addEventListener('change', function () {
+            clearTimeout(espera);
+            espera = setTimeout(function () { form.submit(); }, 350);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "core/base.html" %}
+{% load reservaciones_extras %}
+
+{% block titulo %}{{ cliente.nombre }} - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">{{ cliente.nombre }}</h4>
+    <a href="{% url 'administracion:lista_clientes' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"><i class="bi bi-arrow-left"></i> Clientes</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="rounded-circle bg-primary-subtle text-primary d-inline-flex align-items-center justify-content-center fw-bold fs-4" style="width: 64px; height: 64px;">
+                        {{ cliente.nombre|slice:":1" }}
+                    </div>
+                </div>
+                <dl class="row mb-0 small">
+                    <dt class="col-5 text-muted fw-normal">Teléfono</dt><dd class="col-7">{{ cliente.telefono }}</dd>
+                    <dt class="col-5 text-muted fw-normal">Estado</dt><dd class="col-7">{% if cliente.activo %}Activo{% else %}Inactivo{% endif %}</dd>
+                    <dt class="col-5 text-muted fw-normal">Registrado</dt><dd class="col-7">{{ cliente.fecha_creacion|date:"d/m/Y" }}</dd>
+                </dl>
+                <div class="row text-center border-top pt-3 mt-3 g-0">
+                    <div class="col"><div class="fs-5 fw-semibold">{{ reservaciones|length }}</div><small class="text-muted">Reservaciones</small></div>
+                    <div class="col"><div class="fs-5 fw-semibold">{{ atenciones|length }}</div><small class="text-muted">Visitas</small></div>
+                    <div class="col"><div class="fs-5 fw-semibold">{{ canceladas }}</div><small class="text-muted">Canceladas</small></div>
+                </div>
+                {% if perms.administracion.change_cliente %}
+                <div class="border-top pt-3 mt-3">
+                    <a href="{% url 'administracion:editar_cliente' cliente.pk %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Modificar datos</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold">Historial de reservaciones</div>
+            {% if reservaciones %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Código</th><th>Fecha</th><th>Hora</th><th class="text-center">Mesa</th><th class="text-center">Personas</th><th>Estado</th></tr></thead>
+                    <tbody>
+                    {% for r in reservaciones %}
+                        <tr>
+                            <td><a class="font-monospace text-decoration-none" href="{% url 'reservaciones:detalle_reservacion' r.codigo %}">{{ r.codigo }}</a></td>
+                            <td>{{ r.fecha_hora_inicio|date:"d/m/Y" }}</td>
+                            <td>{{ r.fecha_hora_inicio|time:"H:i" }}</td>
+                            <td class="text-center">{{ r.mesa.numero }}</td>
+                            <td class="text-center">{{ r.cantidad_personas }}</td>
+                            <td>{% include "reservaciones/parciales/estado.html" with estado=r.estado %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="card-body text-muted small">Todavía no tiene reservaciones.</div>
+            {% endif %}
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header bg-white fw-semibold">Visitas al restaurante</div>
+            {% if atenciones %}
+            <ul class="list-group list-group-flush">
+                {% for a in atenciones %}
+                <li class="list-group-item d-flex justify-content-between small">
+                    <span>{{ a.fecha_hora_ingreso|date:"d/m/Y H:i" }} · Mesa {{ a.mesa.numero }} · {{ a.cantidad_personas }} personas</span>
+                    <span class="text-muted">{% if a.reservacion %}Con reservación{% else %}Sin reservación{% endif %} · {{ a.get_estado_display }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="card-body text-muted small">Todavía no registra visitas.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,8 @@
+<div class="mb-3">
+    <label for="{{ campo.id_for_label }}" class="form-label">{{ campo.label }}</label>
+    {{ campo }}
+    {% for error in campo.errors %}
+        <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+    {% if campo.help_text %}<div class="form-text">{{ campo.help_text }}</div>{% endif %}
+</div>

@@ -1,0 +1,41 @@
+{% extends "core/base.html" %}
+{% load reservaciones_extras %}
+
+{% block titulo %}Cancelar reservación {{ reservacion.codigo }} - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">Cancelar reservación <span class="font-monospace">{{ reservacion.codigo }}</span></h4>
+    <a href="{% url 'reservaciones:detalle_reservacion' reservacion.codigo %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 560px;">
+    <div class="card-body p-4">
+        {% include "reservaciones/parciales/errores_generales.html" %}
+
+        <p class="mb-2"><strong>{{ reservacion.cliente.nombre }}</strong> · {{ reservacion.cliente.telefono }}</p>
+        <p class="mb-3 text-muted">{{ reservacion.fecha_hora_inicio|date:"d/m/Y" }}, {{ reservacion.fecha_hora_inicio|time:"H:i" }}–{{ reservacion.fecha_hora_fin|time:"H:i" }} ·
+            {{ reservacion.cantidad_personas }} personas · Mesa {{ reservacion.mesa.numero }}</p>
+
+        <div class="alert alert-warning small">
+            <i class="bi bi-info-circle"></i>
+            La mesa {{ reservacion.mesa.numero }} quedará disponible el {{ reservacion.fecha_hora_inicio|date:"d/m/Y" }}
+            de {{ reservacion.fecha_hora_inicio|time:"H:i" }} a {{ reservacion.fecha_hora_fin|time:"H:i" }}.
+            La reservación no se elimina: queda en el historial como cancelada.
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% include "reservaciones/parciales/campo.html" with campo=form.motivo %}
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'reservaciones:detalle_reservacion' reservacion.codigo %}" class="btn btn-outline-secondary btn-sm">No cancelar</a>
+                <button type="submit" class="btn btn-danger btn-sm"><i class="bi bi-x-circle"></i> Sí, cancelar reservación</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
