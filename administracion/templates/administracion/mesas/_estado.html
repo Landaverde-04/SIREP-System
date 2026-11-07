@@ -1,0 +1,4 @@
+{% if mesa.estado == 'disponible' %}<span class="badge bg-success-subtle text-success border border-success-subtle">Disponible</span>
+{% elif mesa.estado == 'ocupada' %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Ocupada</span>
+{% elif mesa.estado == 'reservada' %}<span class="badge bg-info-subtle text-info border border-info-subtle">Reservada</span>
+{% else %}<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Deshabilitada</span>{% endif %}

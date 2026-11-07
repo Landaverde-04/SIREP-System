@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .models import Cliente, Mesa, normalizar_nombre, normalizar_telefono
+from .models import CategoriaProducto, Cliente, Mesa, Producto, normalizar_nombre, normalizar_telefono
 
 
 class FormularioBootstrap(forms.ModelForm):
@@ -12,6 +12,8 @@ class FormularioBootstrap(forms.ModelForm):
         for campo in self.fields.values():
             if isinstance(campo.widget, forms.CheckboxInput):
                 campo.widget.attrs.setdefault('class', 'form-check-input')
+            elif isinstance(campo.widget, forms.Select):
+                campo.widget.attrs.setdefault('class', 'form-select')
             else:
                 campo.widget.attrs.setdefault('class', 'form-control')
 
@@ -92,3 +94,50 @@ class ClienteForm(FormularioBootstrap):
         if repetido:
             raise ValidationError(f'Ya existe un cliente con ese teléfono: {repetido.nombre}.')
         return telefono
+
+
+class CategoriaForm(FormularioBootstrap):
+    class Meta:
+        model = CategoriaProducto
+        fields = ('nombre',)
+        widgets = {
+            'nombre': forms.TextInput(attrs={'placeholder': 'Ej: Entradas, Bebidas'}),
+        }
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data['nombre'].strip()
+        duplicada = CategoriaProducto.objects.filter(nombre__iexact=nombre)
+        if self.instance.pk:
+            duplicada = duplicada.exclude(pk=self.instance.pk)
+        if duplicada.exists():
+            raise forms.ValidationError('Ya existe una categoría con ese nombre.')
+        return nombre
+
+
+class ProductoForm(FormularioBootstrap):
+    class Meta:
+        model = Producto
+        fields = ('nombre', 'descripcion', 'precio', 'categoria', 'disponible')
+        widgets = {
+            'descripcion': forms.Textarea(attrs={'rows': 3}),
+            'precio': forms.NumberInput(attrs={'step': '0.01', 'min': '0.01'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Solo categorías habilitadas (más la actual del producto al editar).
+        qs = CategoriaProducto.objects.filter(activo=True)
+        if self.instance.pk:
+            qs = CategoriaProducto.objects.filter(activo=True) | \
+                CategoriaProducto.objects.filter(pk=self.instance.categoria_id)
+        self.fields['categoria'].queryset = qs.distinct()
+        self.fields['categoria'].empty_label = 'Selecciona una categoría'
+
+    def clean_nombre(self):
+        nombre = self.cleaned_data['nombre'].strip()
+        duplicado = Producto.objects.filter(nombre__iexact=nombre)
+        if self.instance.pk:
+            duplicado = duplicado.exclude(pk=self.instance.pk)
+        if duplicado.exists():
+            raise forms.ValidationError('Ya existe un producto con ese nombre.')
+        return nombre
