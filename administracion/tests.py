@@ -1,15 +1,116 @@
+from datetime import datetime, timedelta
 from decimal import Decimal
 
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
+from reservaciones.servicios import ServicioIngreso, ServicioReservaciones
+from seguridad.models import Usuario
 from .models import CategoriaProducto, Cliente, Mesa, Producto
 
-Usuario = get_user_model()
+
+def manana(hora=19):
+    fecha = timezone.localdate() + timedelta(days=1)
+    return timezone.make_aware(datetime.combine(fecha, datetime.min.time()).replace(hour=hora))
+
+
+class MesaTests(TestCase):
+    """CU-16 a CU-19."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.mesa = Mesa.objects.create(numero=1, capacidad=6, ubicacion='Terraza')
+        cls.cliente = Cliente.objects.create(nombre='Ana López', telefono='7777-8888')
+        cls.gerente = Usuario.objects.create_user('gerente', password='clave-segura-123')
+        cls.gerente.user_permissions.set(Permission.objects.filter(
+            content_type__app_label='administracion'))
+
+    def setUp(self):
+        self.client.force_login(self.gerente)
+
+    def test_registrar_mesa_y_rechazar_numero_repetido(self):
+        url = reverse('administracion:crear_mesa')
+        respuesta = self.client.post(url, {'numero': 2, 'capacidad': 4, 'ubicacion': '  salón  principal '})
+        mesa = Mesa.objects.get(numero=2)
+        self.assertRedirects(respuesta, reverse('administracion:detalle_mesa', args=[mesa.pk]))
+        self.assertEqual(mesa.ubicacion, 'Salón principal')
+        respuesta = self.client.post(url, {'numero': 2, 'capacidad': 4})
+        self.assertIn('Ya existe una mesa con ese número.', respuesta.context['form'].errors['numero'])
+
+    def test_capacidad_fuera_de_rango(self):
+        respuesta = self.client.post(reverse('administracion:crear_mesa'), {'numero': 3, 'capacidad': 0})
+        self.assertIn('capacidad', respuesta.context['form'].errors)
+
+    def test_no_reduce_capacidad_por_debajo_de_sus_reservaciones(self):
+        ServicioReservaciones().registrar(self.cliente, self.mesa, manana(), timedelta(hours=2), 5)
+        url = reverse('administracion:editar_mesa', args=[self.mesa.pk])
+        respuesta = self.client.post(url, {'numero': 1, 'capacidad': 4, 'ubicacion': 'Terraza'})
+        self.assertIn('reservaciones programadas para 5 personas', str(respuesta.context['form'].errors))
+        self.client.post(url, {'numero': 1, 'capacidad': 5, 'ubicacion': 'Terraza'})
+        self.mesa.refresh_from_db()
+        self.assertEqual(self.mesa.capacidad, 5)
+
+    def test_deshabilitar_respeta_reservaciones_y_atenciones(self):
+        reservacion = ServicioReservaciones().registrar(self.cliente, self.mesa, manana(), timedelta(hours=2), 2)
+        with self.assertRaisesMessage(ValidationError, 'reservación(es) programada(s)'):
+            self.mesa.deshabilitar()
+        ServicioReservaciones().cancelar(reservacion)
+        atencion = ServicioIngreso().registrar_sin_reservacion(self.mesa, 2)
+        with self.assertRaisesMessage(ValidationError, 'está ocupada'):
+            self.mesa.deshabilitar()
+        atencion.cerrar()
+        self.client.post(reverse('administracion:deshabilitar_mesa', args=[self.mesa.pk]))
+        self.mesa.refresh_from_db()
+        self.assertFalse(self.mesa.activo)
+        self.assertEqual(self.mesa.estado, 'Deshabilitada')
+        self.client.post(reverse('administracion:habilitar_mesa', args=[self.mesa.pk]))
+        self.mesa.refresh_from_db()
+        self.assertTrue(self.mesa.activo)
+
+    def test_paginas_cargan(self):
+        for url in [reverse('administracion:lista_mesas'), reverse('administracion:crear_mesa'),
+                    reverse('administracion:detalle_mesa', args=[self.mesa.pk]),
+                    reverse('administracion:editar_mesa', args=[self.mesa.pk]),
+                    reverse('administracion:lista_clientes'), reverse('administracion:crear_cliente'),
+                    reverse('administracion:detalle_cliente', args=[self.cliente.pk]),
+                    reverse('administracion:editar_cliente', args=[self.cliente.pk])]:
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_requiere_permiso(self):
+        self.client.force_login(Usuario.objects.create_user('mesero', password='clave-segura-123'))
+        self.assertEqual(self.client.get(reverse('administracion:lista_mesas')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('administracion:lista_clientes')).status_code, 403)
+
+
+class ClienteVistasTests(TestCase):
+    """CU-24 y CU-25."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.ana = Cliente.objects.create(nombre='Ana López', telefono='7777-8888')
+        cls.luis = Cliente.objects.create(nombre='Luis Pérez', telefono='6111-2222')
+        cls.gerente = Usuario.objects.create_user('gerente', password='clave-segura-123')
+        cls.gerente.user_permissions.set(Permission.objects.filter(content_type__app_label='administracion'))
+
+    def setUp(self):
+        self.client.force_login(self.gerente)
+
+    def test_buscar_por_nombre_o_telefono(self):
+        url = reverse('administracion:lista_clientes')
+        self.assertEqual(list(self.client.get(url, {'q': 'ana'}).context['clientes']), [self.ana])
+        self.assertEqual(list(self.client.get(url, {'q': '61112222'}).context['clientes']), [self.luis])
+
+    def test_modificar_normaliza_y_evita_telefono_repetido(self):
+        url = reverse('administracion:editar_cliente', args=[self.ana.pk])
+        respuesta = self.client.post(url, {'nombre': 'ana maría lópez', 'telefono': '61112222', 'activo': 'on'})
+        self.assertIn('Ya existe un cliente con ese teléfono', str(respuesta.context['form'].errors))
+        self.client.post(url, {'nombre': 'ana maría lópez', 'telefono': '7777 9999', 'activo': 'on'})
+        self.ana.refresh_from_db()
+        self.assertEqual((self.ana.nombre, self.ana.telefono), ('Ana María López', '7777-9999'))
 
 
 def usuario_con_permisos(username='gerente', todos=True, codenames=()):
@@ -21,8 +122,6 @@ def usuario_con_permisos(username='gerente', todos=True, codenames=()):
     return u
 
 
-# ------------------------------------------------------------ Modelos
-
 class MesaModeloTests(TestCase):
     def test_numero_unico(self):
         Mesa.objects.create(numero=1, capacidad=4)
@@ -30,20 +129,21 @@ class MesaModeloTests(TestCase):
             Mesa.objects.create(numero=1, capacidad=2)
 
     def test_nace_disponible(self):
-        self.assertEqual(Mesa.objects.create(numero=2, capacidad=4).estado, Mesa.Estado.DISPONIBLE)
+        self.assertEqual(Mesa.objects.create(numero=2, capacidad=4).estado, 'Disponible')
 
     def test_deshabilitar_y_habilitar(self):
         m = Mesa.objects.create(numero=3, capacidad=4)
         m.deshabilitar()
         m.refresh_from_db()
         self.assertFalse(m.activo)
-        self.assertEqual(m.estado, Mesa.Estado.DESHABILITADA)
-        self.assertNotIn(m, Mesa.objects.disponibles())
+        self.assertEqual(m.estado, 'Deshabilitada')
+        self.assertNotIn(m, Mesa.objects.filter(activo=True))
         m.habilitar()
-        self.assertIn(m, Mesa.objects.disponibles())
+        self.assertIn(m, Mesa.objects.filter(activo=True))
 
     def test_no_se_deshabilita_mesa_ocupada(self):
-        m = Mesa.objects.create(numero=4, capacidad=4, estado=Mesa.Estado.OCUPADA)
+        m = Mesa.objects.create(numero=4, capacidad=4)
+        ServicioIngreso().registrar_sin_reservacion(m, 2)
         with self.assertRaises(ValidationError):
             m.deshabilitar()
         m.refresh_from_db()
@@ -91,8 +191,6 @@ class ClienteModeloTests(TestCase):
             Cliente(nombre='X', telefono='abc').full_clean()
 
 
-# -------------------------------------------------------------- Vistas
-
 class AccesoTests(TestCase):
     def test_requiere_login(self):
         r = self.client.get(reverse('administracion:lista_mesas'))
@@ -124,9 +222,9 @@ class MesaVistasTests(TestCase):
     def test_registrar_mesa(self):                                    # CU-17
         r = self.client.post(reverse('administracion:crear_mesa'),
                              {'numero': 5, 'capacidad': 4, 'ubicacion': 'Terraza'})
-        self.assertRedirects(r, reverse('administracion:lista_mesas'))
+        self.assertRedirects(r, reverse('administracion:detalle_mesa', args=[Mesa.objects.get(numero=5).pk]))
         m = Mesa.objects.get(numero=5)
-        self.assertEqual(m.estado, Mesa.Estado.DISPONIBLE)
+        self.assertEqual(m.estado, 'Disponible')
 
     def test_registrar_mesa_duplicada(self):                          # CU-17 camino 3a
         Mesa.objects.create(numero=5, capacidad=2)
@@ -153,18 +251,21 @@ class MesaVistasTests(TestCase):
         m.refresh_from_db()
         self.assertEqual(m.capacidad, 2)
 
-    def test_deshabilitar_pide_confirmacion(self):                    # CU-19
+    def test_deshabilitar_confirma_en_detalle_y_exige_post(self):                    # CU-19
         m = Mesa.objects.create(numero=1, capacidad=2)
         url = reverse('administracion:deshabilitar_mesa', args=[m.pk])
-        self.assertContains(self.client.get(url), 'Deshabilitar mesa')
+        self.assertContains(self.client.get(reverse('administracion:detalle_mesa', args=[m.pk])),
+                            'Deshabilitar mesa')
+        self.assertEqual(self.client.get(url).status_code, 405)
         m.refresh_from_db()
         self.assertTrue(m.activo)                                     # GET no cambia nada (2a)
         self.client.post(url)
         m.refresh_from_db()
-        self.assertEqual(m.estado, Mesa.Estado.DESHABILITADA)
+        self.assertEqual(m.estado, 'Deshabilitada')
 
     def test_deshabilitar_mesa_ocupada_se_rechaza(self):
-        m = Mesa.objects.create(numero=1, capacidad=2, estado=Mesa.Estado.OCUPADA)
+        m = Mesa.objects.create(numero=1, capacidad=2)
+        ServicioIngreso().registrar_sin_reservacion(m, 2)
         self.client.post(reverse('administracion:deshabilitar_mesa', args=[m.pk]))
         m.refresh_from_db()
         self.assertTrue(m.activo)
@@ -176,7 +277,7 @@ class MesaVistasTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 405)
         self.client.post(url)
         m.refresh_from_db()
-        self.assertEqual(m.estado, Mesa.Estado.DISPONIBLE)
+        self.assertEqual(m.estado, 'Disponible')
 
 
 class ProductoVistasTests(TestCase):
@@ -282,7 +383,7 @@ class CategoriaVistasTests(TestCase):
         self.assertTrue(c.activo)
 
 
-class ClienteVistasTests(TestCase):
+class ClienteAdicionalVistasTests(TestCase):
     def setUp(self):
         usuario_con_permisos()
         self.client.login(username='gerente', password='Clave12345!')
@@ -292,28 +393,28 @@ class ClienteVistasTests(TestCase):
                             'No existen clientes registrados')
 
     def test_registrar_y_buscar(self):                                # CU-04 / CU-24
-        self.client.post(reverse('administracion:crear_cliente'), {'nombre': '  Ana   López ', 'telefono': '7000-0000'})
-        self.client.post(reverse('administracion:crear_cliente'), {'nombre': 'Luis', 'telefono': '7111-1111'})
+        self.client.post(reverse('administracion:crear_cliente'), {'nombre': '  Ana   López ', 'telefono': '7000-0000', 'activo': 'on'})
+        self.client.post(reverse('administracion:crear_cliente'), {'nombre': 'Luis', 'telefono': '7111-1111', 'activo': 'on'})
         self.assertEqual(Cliente.objects.get(telefono='7000-0000').nombre, 'Ana López')
         r = self.client.get(reverse('administracion:lista_clientes'), {'q': '7111'})
         self.assertEqual([c.nombre for c in r.context['clientes']], ['Luis'])
 
     def test_telefono_duplicado(self):
         Cliente.objects.create(nombre='Ana', telefono='7000-0000')
-        r = self.client.post(reverse('administracion:crear_cliente'), {'nombre': 'Otra', 'telefono': '7000-0000'})
+        r = self.client.post(reverse('administracion:crear_cliente'), {'nombre': 'Otra', 'telefono': '7000-0000', 'activo': 'on'})
         self.assertContains(r, 'Ya existe un cliente con ese teléfono')
 
     def test_modificar_cliente(self):                                 # CU-25
         c = Cliente.objects.create(nombre='Ana', telefono='7000-0000')
         self.client.post(reverse('administracion:editar_cliente', args=[c.pk]),
-                         {'nombre': 'Ana María', 'telefono': '7000-0000'})
+                         {'nombre': 'Ana María', 'telefono': '7000-0000', 'activo': 'on'})
         c.refresh_from_db()
         self.assertEqual(c.nombre, 'Ana María')
 
     def test_modificar_invalido_conserva_datos(self):                 # CU-25 camino 3a
         c = Cliente.objects.create(nombre='Ana', telefono='7000-0000')
         self.client.post(reverse('administracion:editar_cliente', args=[c.pk]),
-                         {'nombre': 'Ana', 'telefono': 'xx'})
+                         {'nombre': 'Ana', 'telefono': 'xx', 'activo': 'on'})
         c.refresh_from_db()
         self.assertEqual(c.telefono, '7000-0000')
 

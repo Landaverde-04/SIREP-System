@@ -1,34 +1,102 @@
 from django import forms
+from django.core.exceptions import ValidationError
 
-from .models import Mesa, CategoriaProducto, Producto, Cliente
+from .models import CategoriaProducto, Cliente, Mesa, Producto, normalizar_nombre, normalizar_telefono
 
 
-class _BootstrapMixin:
-    """Aplica las clases de Bootstrap a los widgets del formulario."""
+class FormularioBootstrap(forms.ModelForm):
+    """Agrega las clases de Bootstrap y resalta los campos con error."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for campo in self.fields.values():
-            w = campo.widget
-            if isinstance(w, forms.CheckboxInput):
-                w.attrs.setdefault('class', 'form-check-input')
-            elif isinstance(w, forms.Select):
-                w.attrs.setdefault('class', 'form-select')
+            if isinstance(campo.widget, forms.CheckboxInput):
+                campo.widget.attrs.setdefault('class', 'form-check-input')
+            elif isinstance(campo.widget, forms.Select):
+                campo.widget.attrs.setdefault('class', 'form-select')
             else:
-                w.attrs.setdefault('class', 'form-control')
+                campo.widget.attrs.setdefault('class', 'form-control')
+
+    def add_error(self, field, error):
+        super().add_error(field, error)
+        for nombre in self.errors:
+            if nombre in self.fields:
+                attrs = self.fields[nombre].widget.attrs
+                if 'is-invalid' not in attrs.get('class', ''):
+                    attrs['class'] = (attrs.get('class', '') + ' is-invalid').strip()
 
 
-class MesaForm(_BootstrapMixin, forms.ModelForm):
+class MesaForm(FormularioBootstrap):
+    """CU-17 Registrar mesa y CU-18 Modificar mesa."""
+
     class Meta:
         model = Mesa
-        fields = ('numero', 'capacidad', 'ubicacion')
-        labels = {'numero': 'Número de mesa'}
+        fields = ['numero', 'capacidad', 'ubicacion']
+        labels = {'numero': 'Número de mesa', 'capacidad': 'Capacidad (personas)', 'ubicacion': 'Ubicación'}
+        help_texts = {'ubicacion': 'Por ejemplo: Ventana, Terraza, Salón principal.'}
         widgets = {
-            'ubicacion': forms.TextInput(attrs={'placeholder': 'Ej: Terraza, ventana'}),
+            'numero': forms.NumberInput(attrs={'min': 1}),
+            'capacidad': forms.NumberInput(attrs={'min': 1, 'max': 50}),
+            'ubicacion': forms.TextInput(attrs={'list': 'ubicaciones', 'autocomplete': 'off'}),
+        }
+        error_messages = {
+            'numero': {'unique': 'Ya existe una mesa con ese número.'},
         }
 
+    def clean_numero(self):
+        numero = self.cleaned_data['numero']
+        if numero is not None and numero < 1:
+            raise ValidationError('El número de mesa debe ser mayor que cero.')
+        return numero
 
-class CategoriaForm(_BootstrapMixin, forms.ModelForm):
+    def clean_capacidad(self):
+        capacidad = self.cleaned_data['capacidad']
+        if capacidad is None:
+            return capacidad
+        if not 1 <= capacidad <= 50:
+            raise ValidationError('La capacidad debe estar entre 1 y 50 personas.')
+        if self.instance.pk:
+            requerida = self.instance.capacidad_minima_requerida()
+            if capacidad < requerida:
+                raise ValidationError(
+                    f'La mesa tiene reservaciones programadas para {requerida} personas. '
+                    'Asígneles otra mesa antes de reducir la capacidad.')
+        return capacidad
+
+    def clean_ubicacion(self):
+        return ' '.join((self.cleaned_data.get('ubicacion') or '').split()).capitalize()
+
+
+class ClienteForm(FormularioBootstrap):
+    """Registro y CU-25 Modificar cliente."""
+
+    telefono = forms.CharField(label='Teléfono', max_length=9,
+                               widget=forms.TextInput(attrs={'placeholder': '7777-8888', 'inputmode': 'numeric',
+                                                             'data-telefono': '1', 'autocomplete': 'off'}),
+                               help_text='8 dígitos; el guion se agrega solo.')
+
+    class Meta:
+        model = Cliente
+        fields = ['nombre', 'telefono', 'activo']
+        labels = {'nombre': 'Nombre completo', 'activo': 'Cliente activo (aparece al buscar en reservaciones)'}
+        widgets = {'nombre': forms.TextInput(attrs={'data-nombre': '1', 'autocomplete': 'off'})}
+        error_messages = {'telefono': {'unique': 'Ya existe un cliente con ese teléfono.'}}
+
+    def clean_nombre(self):
+        nombre = normalizar_nombre(self.cleaned_data['nombre'])
+        if not nombre:
+            raise ValidationError('Ingrese el nombre del cliente.')
+        return nombre
+
+    def clean_telefono(self):
+        telefono = normalizar_telefono(self.cleaned_data['telefono'])
+        repetido = Cliente.objects.filter(telefono=telefono).exclude(pk=self.instance.pk).first()
+        if repetido:
+            raise ValidationError(f'Ya existe un cliente con ese teléfono: {repetido.nombre}.')
+        return telefono
+
+
+class CategoriaForm(FormularioBootstrap):
     class Meta:
         model = CategoriaProducto
         fields = ('nombre',)
@@ -46,7 +114,7 @@ class CategoriaForm(_BootstrapMixin, forms.ModelForm):
         return nombre
 
 
-class ProductoForm(_BootstrapMixin, forms.ModelForm):
+class ProductoForm(FormularioBootstrap):
     class Meta:
         model = Producto
         fields = ('nombre', 'descripcion', 'precio', 'categoria', 'disponible')
@@ -73,18 +141,3 @@ class ProductoForm(_BootstrapMixin, forms.ModelForm):
         if duplicado.exists():
             raise forms.ValidationError('Ya existe un producto con ese nombre.')
         return nombre
-
-
-class ClienteForm(_BootstrapMixin, forms.ModelForm):
-    class Meta:
-        model = Cliente
-        fields = ('nombre', 'telefono')
-        widgets = {
-            'telefono': forms.TextInput(attrs={'placeholder': 'Ej: 7000-0000'}),
-        }
-
-    def clean_nombre(self):
-        return ' '.join(self.cleaned_data['nombre'].split())
-
-    def clean_telefono(self):
-        return self.cleaned_data['telefono'].strip()
