@@ -28,7 +28,7 @@ de los ajustes específicos de SIREP.
 | `seguridad/` | Usuarios, sesiones, grupos y permisos heredados |
 | `administracion/` | Aplicación inicial para mesas, menú y clientes |
 | `reservaciones/` | Aplicación inicial para disponibilidad, reservas e ingreso |
-| `pedidos/` | Aplicación inicial para pedidos, preparación y entrega |
+| `pedidos/` | Pedidos por mesa, tablero de cocina y entrega |
 | `cobro/` | Aplicación inicial para consumo y cobro |
 
 ## Módulo de reservaciones
@@ -60,6 +60,35 @@ python manage.py datos_demo_reservaciones
 ```
 
 Pruebas automáticas: `python manage.py test reservaciones`.
+
+## Módulo de pedidos
+
+Toma de pedidos por mesa, preparación en cocina y entrega (`/pedidos/`).
+
+- Un pedido pertenece a la `Atencion` abierta de su mesa (RN-05): solo se ofrecen
+  mesas ocupadas y, si la atención se cierra mientras se llena el formulario,
+  el guardado se rechaza. Los pedidos de visitas distintas nunca se mezclan.
+- Solo se piden productos habilitados y disponibles (RN-06). El precio se copia
+  del menú a cada línea (`DetallePedido.precio_unitario`), así que cambiar el
+  precio después no altera pedidos ya tomados ni su cobro.
+- Estados: Pendiente → En preparación → Listo → Entregado; Cancelado mientras no
+  esté listo. Solo un pedido pendiente puede editarse. Las transiciones viven en
+  `Pedido.TRANSICIONES` y se aplican con bloqueo de fila en `pedidos/servicios.py`.
+- Tablero de cocina (`/pedidos/cocina/`): pedidos en curso de atenciones abiertas,
+  los más antiguos primero, con botón de avance y recarga cada 30 segundos.
+- Permisos: `view_pedido`, `add_pedido`, `change_pedido` y el propio
+  `cambiar_estado_pedido`.
+- Para cobro: `Pedido.objects.de_atencion(a).facturables()` excluye los cancelados y
+  `.con_monto()` anota el total de cada pedido.
+
+Datos de prueba (menú y roles «Mesero» y «Cocina»):
+
+```
+python manage.py datos_demo_pedidos
+```
+
+Para tomar un pedido hace falta una mesa con atención abierta (registre un ingreso
+en `/reservaciones/ingresos/`). Pruebas automáticas: `python manage.py test pedidos`.
 
 ## Tecnologías
 
