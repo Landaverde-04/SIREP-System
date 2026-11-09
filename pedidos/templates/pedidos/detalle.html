@@ -1,0 +1,99 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}Pedido #{{ pedido.id }} - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">Pedido #{{ pedido.id }}</h4>
+    <a href="{% url 'pedidos:lista_pedidos' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 900px;">
+    <div class="card-body p-4">
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Mesa</div>
+                <div class="fw-medium">{{ pedido.mesa }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Mesero</div>
+                <div class="fw-medium">{{ pedido.mesero.get_full_name|default:pedido.mesero.username }}</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Estado</div>
+                <span class="badge text-bg-{{ pedido.color_estado }}">{{ pedido.get_estado_display }}</span>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="text-muted small">Registrado</div>
+                <div class="fw-medium">{{ pedido.fecha_creacion|date:"d/m/Y H:i" }}</div>
+            </div>
+        </div>
+
+        {% if pedido.notas %}
+        <div class="alert alert-light border mb-4">
+            <div class="text-muted small mb-1">Notas</div>
+            {{ pedido.notas|linebreaksbr }}
+        </div>
+        {% endif %}
+
+        <div class="table-responsive border rounded mb-4">
+            <table class="table align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Producto</th>
+                        <th class="text-end">Cantidad</th>
+                        <th class="text-end">Precio</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in pedido.detalles.all %}
+                    <tr>
+                        <td>
+                            {{ detalle.producto.nombre }}
+                            {% if detalle.nota %}<div class="text-muted small">{{ detalle.nota }}</div>{% endif %}
+                        </td>
+                        <td class="text-end">{{ detalle.cantidad }}</td>
+                        <td class="text-end">${{ detalle.precio_unitario|floatformat:"2u" }}</td>
+                        <td class="text-end">${{ detalle.subtotal|floatformat:"2u" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3" class="text-end">Total</th>
+                        <th class="text-end">${{ pedido.total|floatformat:"2u" }}</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            {% if perms.pedidos.change_pedido and pedido.editable %}
+            <a href="{% url 'pedidos:editar_pedido' pedido.id %}" class="btn btn-outline-primary d-flex align-items-center gap-2">
+                <i class="bi bi-pencil"></i> Editar pedido
+            </a>
+            {% endif %}
+
+            {% if perms.pedidos.cambiar_estado_pedido %}
+            {% for accion in pedido.acciones_disponibles %}
+            <form method="post"
+                  action="{% url 'pedidos:cambiar_estado' pedido.id accion.estado %}"
+                  {% if accion.confirmar %}onsubmit="return confirm('¿Cancelar el pedido #{{ pedido.id }}?');"{% endif %}>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-{{ accion.clase }} d-flex align-items-center gap-2">
+                    <i class="bi {{ accion.icono }}"></i> {{ accion.etiqueta }}
+                </button>
+            </form>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
