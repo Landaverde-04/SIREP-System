@@ -1,0 +1,26 @@
+{% extends "cobro/base_cobro.html" %}
+
+{% block titulo %}Cobro #{{ cobro.pk }} - SIREP{% endblock %}
+{% block encabezado %}Cobro #{{ cobro.pk }}{% endblock %}
+{% block cobro_contenido %}
+<div class="alert alert-success"><strong>Pago registrado</strong><div class="small">La atención #{{ cobro.atencion_id }} está cerrada. El desglose histórico se conserva.</div></div>
+<div class="row g-4">
+    <div class="col-lg-8"><section class="card shadow-sm border-0">
+        <div class="card-body p-4"><div class="row g-3">
+            <div class="col-6"><div class="small text-muted">Mesa / Atención</div><div class="fw-medium">{{ cobro.atencion.mesa }} / #{{ cobro.atencion_id }}</div></div>
+            <div class="col-6"><div class="small text-muted">Fecha y hora</div><div>{{ cobro.fecha_hora_pago|date:"d/m/Y H:i" }}</div></div>
+            <div class="col-6"><div class="small text-muted">Cajero</div><div>{{ cobro.cajero.get_full_name|default:cobro.cajero.username }}</div></div>
+            <div class="col-6"><div class="small text-muted">Forma de pago</div><div>{{ cobro.get_forma_pago_display }}</div></div>
+        </div></div>
+        <div class="table-responsive"><table class="table align-middle cobro-tabla mb-0">
+            <caption class="visually-hidden">Desglose histórico del cobro {{ cobro.pk }}.</caption>
+            <thead class="table-light"><tr><th scope="col">Producto</th><th scope="col" class="text-end">Cant.</th><th scope="col" class="text-end">Precio</th><th scope="col" class="text-end">Subtotal</th></tr></thead>
+            <tbody>{% for detalle in cobro.detalles.all %}<tr><td class="fw-medium">{{ detalle.nombre_producto }}</td><td class="text-end">{{ detalle.cantidad }}</td><td class="text-end text-nowrap">$ {{ detalle.precio_unitario|floatformat:2 }}</td><td class="text-end text-nowrap">$ {{ detalle.subtotal|floatformat:2 }}</td></tr>{% endfor %}</tbody>
+        </table></div>
+    </section></div>
+    <div class="col-lg-4"><section class="card border-0 shadow-sm"><div class="card-body p-4">
+        <div class="text-muted small mb-1">Total cobrado</div><div class="display-6 fw-semibold cobro-dinero mb-4">$ {{ cobro.total|floatformat:2 }}</div>
+        <dl class="mb-0"><div class="d-flex justify-content-between mb-2"><dt class="fw-normal text-muted">Monto recibido</dt><dd class="mb-0">$ {{ cobro.monto_recibido|floatformat:2 }}</dd></div><div class="d-flex justify-content-between"><dt class="fw-normal text-muted">Cambio</dt><dd class="mb-0 fw-semibold">$ {{ cobro.cambio|floatformat:2 }}</dd></div></dl>
+    </div></section><p class="small text-muted mt-3">Registro interno de cobro. No constituye un documento tributario.</p></div>
+</div>
+{% endblock %}
