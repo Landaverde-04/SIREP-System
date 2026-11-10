@@ -119,15 +119,18 @@
             <i class="bi bi-key"></i> Resetear contraseña
         </a>
         {% endif %}
-        {% if perms.seguridad.delete_usuario %}
-        <button type="button"
-                class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2"
-                data-accion="eliminar"
-                data-tipo="usuario"
-                data-nombre="{{ usuario.username }}"
-                data-url="{% url 'seguridad:eliminar_usuario' usuario.id %}">
-            <i class="bi bi-trash"></i> Eliminar usuario
-        </button>
+        {% if perms.seguridad.change_usuario %}
+            {% if usuario.is_active %}
+                {% if usuario.pk != request.user.pk %}
+                <a href="{% url 'seguridad:desactivar_usuario' usuario.id %}" class="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-person-dash"></i> Desactivar usuario
+                </a>
+                {% endif %}
+            {% else %}
+            <a href="{% url 'seguridad:activar_usuario' usuario.id %}" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-2">
+                <i class="bi bi-person-check"></i> Activar usuario
+            </a>
+            {% endif %}
         {% endif %}
     </div>
 

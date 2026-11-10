@@ -1,0 +1,101 @@
+<section data-consulta-aplicada="{{ consulta_aplicada }}" aria-label="Resultados de usuarios">
+    {% if usuarios %}
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 tabla-usuarios">
+                <thead class="table-dark">
+                    <tr>
+                        {% for columna in columnas %}
+                        <th scope="col" {% if columna.seleccionada %}aria-sort="{{ columna.aria_orden }}"{% endif %}>
+                            <a class="orden-usuarios" href="{% querystring ordenar=columna.clave direccion=columna.siguiente pagina=None %}" data-listado>
+                                {{ columna.titulo }}
+                                <i class="bi {% if columna.seleccionada %}{% if direccion == 'asc' %}bi-arrow-up{% else %}bi-arrow-down{% endif %}{% else %}bi-arrow-down-up opacity-50{% endif %} sort-icon ms-1" aria-hidden="true"></i>
+                            </a>
+                        </th>
+                        {% endfor %}
+                        <th scope="col">Último acceso</th>
+                        <th scope="col"><span class="visually-hidden">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-cuerpo">
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="usuarios-avatar" aria-hidden="true">{{ usuario.username|slice:":1"|upper }}</span>
+                                <div class="text-nowrap">
+                                    <a href="{% url 'seguridad:detalle_usuario' usuario.id %}" class="text-decoration-none fw-medium">{{ usuario.username }}</a>
+                                    {% if usuario.pk == request.user.pk %}<span class="usuarios-cuenta-propia">Tu cuenta</span>{% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ usuario.get_full_name|default:"—" }}</td>
+                        <td>{{ usuario.email|default:"—" }}</td>
+                        <td>
+                            {% for rol in usuario.groups.all %}
+                            <span class="badge bg-secondary">{{ rol.name }}</span>
+                            {% empty %}<span class="text-muted small">Sin rol</span>{% endfor %}
+                        </td>
+                        <td>
+                            {% if usuario.is_active %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Activado</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary border">Desactivado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small text-nowrap">{{ usuario.last_login|date:"d/m/Y H:i"|default:"—" }}</td>
+                        <td class="text-end text-nowrap">
+                            {% if perms.seguridad.change_usuario %}
+                            <a href="{% url 'seguridad:editar_usuario' usuario.id %}" class="btn btn-sm btn-outline-primary" title="Editar usuario {{ usuario.username }}" aria-label="Editar usuario {{ usuario.username }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
+                            {% if usuario.is_active %}
+                                {% if usuario.pk != request.user.pk %}
+                                <a href="{% url 'seguridad:desactivar_usuario' usuario.id %}?siguiente={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-danger" title="Desactivar usuario {{ usuario.username }}" aria-label="Desactivar usuario {{ usuario.username }}"><i class="bi bi-person-dash" aria-hidden="true"></i></a>
+                                {% endif %}
+                            {% else %}
+                            <a href="{% url 'seguridad:activar_usuario' usuario.id %}?siguiente={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-outline-success" title="Activar usuario {{ usuario.username }}" aria-label="Activar usuario {{ usuario.username }}"><i class="bi bi-person-check" aria-hidden="true"></i></a>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="d-flex flex-column gap-2 mt-3">
+        <small class="text-muted">Mostrando {{ usuarios.start_index }}–{{ usuarios.end_index }} de {{ usuarios.paginator.count }} usuario{{ usuarios.paginator.count|pluralize }}</small>
+        {% if usuarios.has_other_pages %}
+        <nav class="align-self-center" aria-label="Paginación de usuarios">
+            <ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">
+                {% if usuarios.has_previous %}
+                <li class="page-item"><a class="page-link" href="{% querystring pagina=usuarios.previous_page_number %}" data-listado>Anterior</a></li>
+                {% else %}<li class="page-item disabled"><span class="page-link">Anterior</span></li>{% endif %}
+                {% for numero in paginas %}
+                    {% if numero == elipsis %}
+                    <li class="page-item disabled"><span class="page-link">{{ numero }}</span></li>
+                    {% elif numero == usuarios.number %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ numero }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{% querystring pagina=numero %}" data-listado aria-label="Página {{ numero }}">{{ numero }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if usuarios.has_next %}
+                <li class="page-item"><a class="page-link" href="{% querystring pagina=usuarios.next_page_number %}" data-listado>Siguiente</a></li>
+                {% else %}<li class="page-item disabled"><span class="page-link">Siguiente</span></li>{% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5 text-muted" id="sin-resultados">
+            <i class="bi bi-people fs-2 d-block mb-2" aria-hidden="true"></i>
+            {% if consulta_aplicada %}
+            <p class="mb-0">No se encontraron usuarios con esa búsqueda y el estado seleccionado.</p>
+            {% else %}
+            <p class="mb-0">No hay usuarios con el estado seleccionado.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</section>

@@ -102,7 +102,7 @@
             {% endif %}
 
             {# Seccion Seguridad: solo se muestra si tiene acceso a al menos un item #}
-            {% if perms.seguridad.view_usuario or perms.auth.view_group %}
+            {% if perms.seguridad.view_usuario or perms.auth.view_group or perms.seguridad.view_empleado or perms.seguridad.add_empleado %}
             <li class="sidebar-seccion mt-3 mb-1 px-3">
                 <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Seguridad</span>
             </li>
@@ -114,6 +114,17 @@
                    title="Usuarios">
                     <i class="bi bi-people flex-shrink-0"></i>
                     <span class="sidebar-label">Usuarios</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {% if perms.seguridad.view_empleado or perms.seguridad.add_empleado %}
+            <li class="nav-item">
+                <a href="{% if perms.seguridad.view_empleado %}{% url 'seguridad:lista_empleados' %}{% else %}{% url 'seguridad:crear_empleado' %}{% endif %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Empleados">
+                    <i class="bi bi-person-badge flex-shrink-0"></i>
+                    <span class="sidebar-label">Empleados</span>
                 </a>
             </li>
             {% endif %}
