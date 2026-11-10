@@ -64,6 +64,29 @@
             {% endif %}
             {% endif %}
 
+            {# Seccion Pedidos #}
+            {% if perms.pedidos.view_pedido %}
+            <li class="sidebar-seccion mt-3 mb-1 px-3">
+                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Pedidos</span>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'pedidos:lista_pedidos' %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Pedidos">
+                    <i class="bi bi-receipt flex-shrink-0"></i>
+                    <span class="sidebar-label">Pedidos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{% url 'pedidos:cocina' %}"
+                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
+                   title="Cocina">
+                    <i class="bi bi-fire flex-shrink-0"></i>
+                    <span class="sidebar-label">Cocina</span>
+                </a>
+            </li>
+            {% endif %}
+
             {# Seccion Administracion #}
             {% if perms.administracion.view_mesa or perms.administracion.view_producto or perms.administracion.view_cliente %}
             <li class="sidebar-seccion mt-3 mb-1 px-3">
