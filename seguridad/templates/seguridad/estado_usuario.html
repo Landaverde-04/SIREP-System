@@ -1,0 +1,28 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}{{ accion }} usuario - SIREP{% endblock %}
+
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">{{ accion }} usuario</h4>
+    <a href="{{ siguiente }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver</a>
+</div>
+<div class="card shadow-sm" style="max-width: 520px;">
+    <div class="card-body p-4">
+        <p>¿Deseas {{ accion|lower }} la cuenta de <strong>{{ usuario.username }}</strong>?</p>
+        {% if activar %}
+        <p class="text-muted small">Podrá volver a iniciar sesión con sus credenciales y permisos actuales.</p>
+        {% else %}
+        <p class="text-muted small">No podrá iniciar sesión. Sus datos, roles e historial se conservarán y podrás reactivar la cuenta después.</p>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="siguiente" value="{{ siguiente }}">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn {% if activar %}btn-success{% else %}btn-danger{% endif %}">Sí, {{ accion|lower }}</button>
+                <a href="{{ siguiente }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "core/base.html" %}
+
+{% block titulo %}{{ accion }} empleado - SIREP{% endblock %}
+
+{% block contenido %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <h4 class="mb-0 fw-semibold">{{ accion }} empleado</h4>
+    <a href="{{ siguiente }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver</a>
+</div>
+<div class="card shadow-sm mx-auto" style="max-width: 560px;">
+    <div class="card-body p-4">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <i class="bi bi-person-badge fs-2 text-primary" aria-hidden="true"></i>
+            <div>
+                <div class="fw-semibold">{{ empleado }}</div>
+                <div class="text-muted small">{{ empleado.codigo }} · {{ empleado.cargo }}</div>
+            </div>
+        </div>
+        <p>¿Deseas {{ accion|lower }} a este empleado?</p>
+        {% if activar %}
+        <p class="text-muted small">Volverá a aparecer en el listado de empleados activados, conservando sus datos e historial.</p>
+        {% else %}
+        <p class="text-muted small">Pasará al listado de empleados desactivados. Sus datos e historial se conservarán y podrás reactivarlo después.</p>
+        {% endif %}
+        {% if empleado.usuario_id %}
+        <div class="alert alert-warning small" role="note">
+            {% if activar %}La cuenta <strong>{{ empleado.usuario.username }}</strong> conservará su estado actual. Podrás reactivarla por separado desde Usuarios.
+            {% else %}También se desactivará la cuenta <strong>{{ empleado.usuario.username }}</strong>. Se conservarán la relación y el historial.{% endif %}
+        </div>
+        {% endif %}
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="siguiente" value="{{ siguiente }}">
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" class="btn {% if activar %}btn-success{% else %}btn-danger{% endif %}">Sí, {{ accion|lower }}</button>
+                <a href="{{ siguiente }}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
