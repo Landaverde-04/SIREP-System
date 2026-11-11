@@ -1,0 +1,85 @@
+{% load l10n %}
+<section data-consulta-aplicada="{{ consulta_aplicada }}" aria-label="Resultados de empleados">
+    {% if empleados %}
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 tabla-usuarios">
+                <thead class="table-dark">
+                    <tr>
+                        <th scope="col">Código</th>
+                        <th scope="col">Empleado</th>
+                        <th scope="col">Cargo</th>
+                        <th scope="col">Contacto</th>
+                        <th scope="col">Fecha de ingreso</th>
+                        <th scope="col" class="text-end">Salario mensual</th>
+                        <th scope="col">Estado</th>
+                        {% if perms.seguridad.change_empleado %}<th scope="col"><span class="visually-hidden">Acciones</span></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for empleado in empleados %}
+                    <tr>
+                        <td class="text-nowrap text-muted small">{{ empleado.codigo }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="usuarios-avatar" aria-hidden="true">{{ empleado.nombres|slice:":1"|upper }}{{ empleado.apellidos|slice:":1"|upper }}</span>
+                                <a href="{% url 'seguridad:detalle_empleado' empleado.id %}" class="fw-medium text-decoration-none">{{ empleado.nombres }} {{ empleado.apellidos }}</a>
+                            </div>
+                        </td>
+                        <td>{{ empleado.cargo }}</td>
+                        <td class="small">
+                            {% if empleado.telefono %}<div>{{ empleado.telefono }}</div>{% endif %}
+                            {% if empleado.correo %}<div class="text-muted">{{ empleado.correo }}</div>{% endif %}
+                            {% if not empleado.telefono and not empleado.correo %}<span class="text-muted">Sin registrar</span>{% endif %}
+                        </td>
+                        <td class="text-nowrap">{{ empleado.fecha_ingreso|date:"d/m/Y" }}</td>
+                        <td class="text-end text-nowrap">{% if empleado.salario_mensual is not None %}${{ empleado.salario_mensual|unlocalize }}{% else %}<span class="text-muted small">Sin registrar</span>{% endif %}</td>
+                        <td>{% if empleado.activo %}<span class="badge bg-success-subtle text-success border border-success-subtle">Activado</span>{% else %}<span class="badge bg-secondary-subtle text-secondary border">Desactivado</span>{% endif %}</td>
+                        {% if perms.seguridad.change_empleado %}
+                        <td class="text-end text-nowrap">
+                            {% if empleado.activo %}
+                            {% if empleado.usuario_id != request.user.pk %}
+                            <a href="{% url 'seguridad:desactivar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                               class="btn btn-sm btn-outline-danger" title="Desactivar empleado {{ empleado }}" aria-label="Desactivar empleado {{ empleado }}">
+                                <i class="bi bi-person-dash" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                            {% else %}
+                            <a href="{% url 'seguridad:activar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                               class="btn btn-sm btn-outline-success" title="Reactivar empleado {{ empleado }}" aria-label="Reactivar empleado {{ empleado }}">
+                                <i class="bi bi-person-check" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="d-flex flex-column gap-2 mt-3">
+        <small class="text-muted">Mostrando {{ empleados.start_index }}–{{ empleados.end_index }} de {{ empleados.paginator.count }} empleado{{ empleados.paginator.count|pluralize }}</small>
+        {% if empleados.has_other_pages %}
+        <nav class="align-self-center" aria-label="Paginación de empleados">
+            <ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">
+                {% if empleados.has_previous %}<li class="page-item"><a class="page-link" href="{% querystring pagina=empleados.previous_page_number %}" data-listado>Anterior</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Anterior</span></li>{% endif %}
+                {% for numero in paginas %}
+                    {% if numero == elipsis %}<li class="page-item disabled"><span class="page-link">{{ numero }}</span></li>
+                    {% elif numero == empleados.number %}<li class="page-item active" aria-current="page"><span class="page-link">{{ numero }}</span></li>
+                    {% else %}<li class="page-item"><a class="page-link" href="{% querystring pagina=numero %}" data-listado aria-label="Página {{ numero }}">{{ numero }}</a></li>{% endif %}
+                {% endfor %}
+                {% if empleados.has_next %}<li class="page-item"><a class="page-link" href="{% querystring pagina=empleados.next_page_number %}" data-listado>Siguiente</a></li>{% else %}<li class="page-item disabled"><span class="page-link">Siguiente</span></li>{% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm">
+        <div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-person-badge fs-2 d-block mb-2" aria-hidden="true"></i>
+            <p class="mb-0">{% if consulta_aplicada %}No se encontraron empleados con esa búsqueda y el estado seleccionado.{% else %}No hay empleados con el estado seleccionado.{% endif %}</p>
+        </div>
+    </div>
+    {% endif %}
+</section>

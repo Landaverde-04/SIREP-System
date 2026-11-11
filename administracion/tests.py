@@ -423,7 +423,10 @@ class SidebarTests(TestCase):
     def test_gerente_ve_seccion_administracion(self):
         usuario_con_permisos()
         self.client.login(username='gerente', password='Clave12345!')
-        r = self.client.get('/')
+        inicio = self.client.get('/')
+        modulo = reverse('core:modulo', kwargs={'modulo': 'administracion'})
+        self.assertContains(inicio, modulo)
+        r = self.client.get(modulo)
         for texto in ('Mesas', 'Menú', 'Clientes'):
             self.assertContains(r, texto)
 
