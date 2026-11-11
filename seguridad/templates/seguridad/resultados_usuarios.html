@@ -45,7 +45,7 @@
                         </td>
                         <td class="text-muted small text-nowrap">{{ usuario.last_login|date:"d/m/Y H:i"|default:"—" }}</td>
                         <td class="text-end text-nowrap">
-                            {% if perms.seguridad.change_usuario %}
+                            {% if perms.seguridad.change_usuario and not usuario.is_superuser or perms.seguridad.change_usuario and request.user.is_superuser %}
                             <a href="{% url 'seguridad:editar_usuario' usuario.id %}" class="btn btn-sm btn-outline-primary" title="Editar usuario {{ usuario.username }}" aria-label="Editar usuario {{ usuario.username }}"><i class="bi bi-pencil" aria-hidden="true"></i></a>
                             {% if usuario.is_active %}
                                 {% if usuario.pk != request.user.pk %}

@@ -61,6 +61,13 @@ class Pedido(ModeloBase):
         Estado.CANCELADO: (),
     }
 
+    PERMISOS_ESTADO = {
+        Estado.EN_PREPARACION: 'pedidos.preparar_pedido',
+        Estado.LISTO: 'pedidos.preparar_pedido',
+        Estado.ENTREGADO: 'pedidos.entregar_pedido',
+        Estado.CANCELADO: 'pedidos.cancelar_pedido',
+    }
+
     COLORES = {
         Estado.PENDIENTE: 'warning',
         Estado.EN_PREPARACION: 'info',
@@ -94,7 +101,9 @@ class Pedido(ModeloBase):
         verbose_name_plural = 'pedidos'
         ordering = ['-fecha_creacion']
         permissions = [
-            ('cambiar_estado_pedido', 'Puede cambiar el estado de los pedidos'),
+            ('preparar_pedido', 'Puede preparar pedidos'),
+            ('entregar_pedido', 'Puede confirmar entregas de pedidos'),
+            ('cancelar_pedido', 'Puede cancelar pedidos'),
         ]
         indexes = [models.Index(fields=['estado', 'fecha_creacion'], name='pedido_estado_fecha_idx')]
 

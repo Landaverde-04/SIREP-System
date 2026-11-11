@@ -1,0 +1,17 @@
+[data-permisos-rol] [hidden] {
+    display: none !important;
+}
+
+.icono-grupo-permisos {
+    transition: transform 0.15s ease;
+}
+
+[data-grupo-toggle][aria-expanded="false"] .icono-grupo-permisos {
+    transform: rotate(-90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .icono-grupo-permisos {
+        transition: none;
+    }
+}

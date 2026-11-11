@@ -79,8 +79,7 @@
             </a>
             {% endif %}
 
-            {% if perms.pedidos.cambiar_estado_pedido %}
-            {% for accion in pedido.acciones_disponibles %}
+            {% for accion in acciones %}
             <form method="post"
                   action="{% url 'pedidos:cambiar_estado' pedido.id accion.estado %}"
                   {% if accion.confirmar %}onsubmit="return confirm('¿Cancelar el pedido #{{ pedido.id }}?');"{% endif %}>
@@ -90,7 +89,6 @@
                 </button>
             </form>
             {% endfor %}
-            {% endif %}
         </div>
 
     </div>

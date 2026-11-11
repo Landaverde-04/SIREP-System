@@ -44,7 +44,7 @@
                 {% endif %}
 
                 {% with siguiente=pedido.accion_siguiente %}
-                {% if siguiente and perms.pedidos.cambiar_estado_pedido %}
+                {% if siguiente and columna.puede_avanzar %}
                 <form method="post" action="{% url 'pedidos:cambiar_estado' pedido.id siguiente.estado %}">
                     {% csrf_token %}
                     <input type="hidden" name="volver" value="cocina">

@@ -60,8 +60,19 @@ class ConfirmacionesSeguridadTests(TestCase):
     def test_modal_rol_muestra_la_informacion_real_de_usuarios_asignados(self):
         respuesta = self.confirmar('eliminar_rol', self.rol)
         self.assertContains(respuesta, '1 usuario asignado')
-        self.assertContains(respuesta, 'Sí, eliminar')
+        self.assertNotContains(respuesta, 'Sí, eliminar')
         self.assertContains(respuesta, 'action="' + self.url('eliminar_rol', self.rol) + '"')
+
+    def test_eliminacion_directa_requiere_quitar_usuarios_del_rol(self):
+        url = self.url('eliminar_rol', self.rol)
+        destino = reverse('seguridad:lista_roles')
+        self.assertRedirects(self.client.post(url), destino)
+        self.assertTrue(self.usuario.groups.filter(pk=self.rol.pk).exists())
+
+        self.usuario.groups.remove(self.rol)
+        self.assertContains(self.confirmar('eliminar_rol', self.rol), 'Sí, eliminar')
+        self.assertRedirects(self.client.post(url), destino)
+        self.assertFalse(Group.objects.filter(pk=self.rol.pk).exists())
 
     def test_post_estado_regresa_al_mismo_detalle(self):
         for nombre, objeto, detalle in (

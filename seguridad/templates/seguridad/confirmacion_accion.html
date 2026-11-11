@@ -10,7 +10,7 @@
         <p>¿Deseas {{ accion|lower }} {% if tipo == 'rol' %}este rol{% elif tipo == 'usuario' %}esta cuenta de usuario{% else %}a este empleado{% endif %}?</p>
         {% if tipo == 'rol' %}
             <p class="text-muted small">Esta acción no se puede deshacer.</p>
-            {% if total_usuarios %}<div class="alert alert-warning small">Este rol tiene {{ total_usuarios }} usuario{{ total_usuarios|pluralize }} asignado{{ total_usuarios|pluralize }}. Serán desvinculados del rol.</div>{% endif %}
+            {% if total_usuarios %}<div class="alert alert-warning small">Este rol tiene {{ total_usuarios }} usuario{{ total_usuarios|pluralize }} asignado{{ total_usuarios|pluralize }}. Quita las asignaciones antes de eliminar el rol.</div>{% endif %}
         {% elif tipo == 'usuario' %}
             <p class="text-muted small">{% if activar %}Podrá iniciar sesión con sus credenciales y permisos actuales.{% else %}No podrá iniciar sesión. Se conservarán sus datos, roles e historial para poder reactivarlo después.{% endif %}</p>
         {% else %}
@@ -22,6 +22,8 @@
         {% csrf_token %}
         <input type="hidden" name="siguiente" value="{{ siguiente }}">
         <button type="button" class="btn btn-outline-secondary" data-cerrar-confirmacion>Cancelar</button>
-        <button type="submit" class="btn {% if activar %}btn-success{% else %}btn-danger{% endif %}">Sí, {{ accion|lower }}</button>
+        {% if tipo != 'rol' or not total_usuarios %}
+            <button type="submit" class="btn {% if activar %}btn-success{% else %}btn-danger{% endif %}">Sí, {{ accion|lower }}</button>
+        {% endif %}
     </form>
 </section>
