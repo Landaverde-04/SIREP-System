@@ -126,3 +126,7 @@ class EmpleadoCrearForm(forms.ModelForm):
             if nombre in datos:
                 datos[nombre] = ' '.join(datos[nombre].split())
         return datos
+
+
+class EmpleadoEditarForm(EmpleadoCrearForm):
+    """Reutiliza los campos y validaciones personales y laborales del registro."""

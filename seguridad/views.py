@@ -19,7 +19,7 @@ from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.http import require_http_methods
 
 from .models import Empleado, Usuario
-from .forms import EmpleadoCrearForm, UsuarioCrearForm, UsuarioEditarForm, RolForm, ResetearPasswordForm, APPS_NEGOCIO
+from .forms import EmpleadoCrearForm, EmpleadoEditarForm, UsuarioCrearForm, UsuarioEditarForm, RolForm, ResetearPasswordForm, APPS_NEGOCIO
 
 
 _ACCIONES_ES = {
@@ -151,19 +151,22 @@ def editar_usuario(request, id):
     return render(request, 'seguridad/form_usuario.html', {'form': form, 'accion': 'Editar', 'usuario': usuario})
 
 
-def _destino_lista_usuarios(request):
+def _destino_lista_usuarios(request, usuario=None):
     destino = request.POST.get('siguiente', request.GET.get('siguiente', ''))
     lista = reverse('seguridad:lista_usuarios')
+    permitidas = {lista}
+    if usuario is not None and request.user.has_perm('seguridad.view_usuario'):
+        permitidas.add(reverse('seguridad:detalle_usuario', args=[usuario.pk]))
     if (url_has_allowed_host_and_scheme(
             destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())
-            and urlsplit(destino).path == lista):
+            and urlsplit(destino).path in permitidas):
         return destino
     return lista
 
 
 def _cambiar_estado_usuario(request, id, activar):
     usuario = get_object_or_404(Usuario, pk=id)
-    siguiente = _destino_lista_usuarios(request)
+    siguiente = _destino_lista_usuarios(request, usuario)
     if activar and Empleado.objects.filter(usuario=usuario, activo=False).exists():
         messages.error(request, 'Primero debes reactivar al empleado asociado a esta cuenta.')
         return redirect(siguiente)
@@ -176,20 +179,26 @@ def _cambiar_estado_usuario(request, id, activar):
         estado = 'activado' if activar else 'desactivado'
         messages.success(request, f'Usuario {usuario.username} {estado} correctamente.')
         return redirect(siguiente)
-    return render(request, 'seguridad/estado_usuario.html', {
-        'usuario': usuario, 'activar': activar,
+    return _render_confirmacion(request, 'seguridad/estado_usuario.html', {
+        'tipo': 'usuario', 'usuario': usuario, 'activar': activar,
         'accion': 'Activar' if activar else 'Desactivar', 'siguiente': siguiente,
     })
 
 
 @login_required
 @permission_required('seguridad.change_usuario', raise_exception=True)
+@never_cache
+@vary_on_headers('X-Requested-With')
+@require_http_methods(['GET', 'HEAD', 'POST'])
 def desactivar_usuario(request, id):
     return _cambiar_estado_usuario(request, id, activar=False)
 
 
 @login_required
 @permission_required('seguridad.change_usuario', raise_exception=True)
+@never_cache
+@vary_on_headers('X-Requested-With')
+@require_http_methods(['GET', 'HEAD', 'POST'])
 def activar_usuario(request, id):
     return _cambiar_estado_usuario(request, id, activar=True)
 
@@ -249,13 +258,20 @@ def editar_rol(request, id):
 
 @login_required
 @permission_required('auth.delete_group', raise_exception=True)
+@never_cache
+@vary_on_headers('X-Requested-With')
+@require_http_methods(['GET', 'HEAD', 'POST'])
 def eliminar_rol(request, id):
     rol = get_object_or_404(Group, pk=id)
     if request.method == 'POST':
         rol.delete()
         messages.success(request, 'Rol eliminado correctamente.')
         return redirect('seguridad:lista_roles')
-    return render(request, 'seguridad/eliminar_rol.html', {'rol': rol})
+    return _render_confirmacion(request, 'seguridad/eliminar_rol.html', {
+        'tipo': 'rol', 'rol': rol, 'accion': 'Eliminar',
+        'siguiente': reverse('seguridad:lista_roles'),
+        'total_usuarios': rol.user_set.count(),
+    })
 
 
 @login_required
@@ -376,24 +392,30 @@ def crear_empleado(request):
         if request.user.has_perm('seguridad.view_empleado'):
             return redirect('seguridad:lista_empleados')
         return redirect('seguridad:crear_empleado')
-    return render(request, 'seguridad/form_empleado.html', {'form': form})
+    return render(request, 'seguridad/form_empleado.html', {
+        'form': form, 'accion': 'Registrar', 'modo_edicion': False,
+        'volver_url': reverse('seguridad:lista_empleados'),
+    })
 
 
-def _destino_lista_empleados(request):
+def _destino_lista_empleados(request, empleado=None):
     if not request.user.has_perm('seguridad.view_empleado'):
         return reverse('core:home')
     destino = request.POST.get('siguiente', request.GET.get('siguiente', ''))
     lista = reverse('seguridad:lista_empleados')
+    permitidas = {lista}
+    if empleado is not None:
+        permitidas.add(reverse('seguridad:detalle_empleado', args=[empleado.pk]))
     if (url_has_allowed_host_and_scheme(
             destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())
-            and urlsplit(destino).path == lista):
+            and urlsplit(destino).path in permitidas):
         return destino
     return lista
 
 
 def _cambiar_estado_empleado(request, id, activar):
     empleado = get_object_or_404(Empleado.objects.select_related('usuario'), pk=id)
-    siguiente = _destino_lista_empleados(request)
+    siguiente = _destino_lista_empleados(request, empleado)
     if not activar and empleado.usuario_id == request.user.pk:
         messages.error(request, 'No puedes desactivar al empleado asociado a tu propia cuenta.')
         return redirect(siguiente)
@@ -425,8 +447,8 @@ def _cambiar_estado_empleado(request, id, activar):
             estado = 'activado' if activar else 'desactivado'
             messages.info(request, f'El empleado {empleado.codigo} ya estaba {estado}.')
         return redirect(siguiente)
-    return render(request, 'seguridad/estado_empleado.html', {
-        'empleado': empleado,
+    return _render_confirmacion(request, 'seguridad/estado_empleado.html', {
+        'tipo': 'empleado', 'empleado': empleado,
         'activar': activar,
         'accion': 'Reactivar' if activar else 'Desactivar',
         'siguiente': siguiente,
@@ -436,6 +458,7 @@ def _cambiar_estado_empleado(request, id, activar):
 @login_required
 @permission_required('seguridad.change_empleado', raise_exception=True)
 @never_cache
+@vary_on_headers('X-Requested-With')
 @require_http_methods(['GET', 'HEAD', 'POST'])
 def desactivar_empleado(request, id):
     return _cambiar_estado_empleado(request, id, activar=False)
@@ -444,6 +467,7 @@ def desactivar_empleado(request, id):
 @login_required
 @permission_required('seguridad.change_empleado', raise_exception=True)
 @never_cache
+@vary_on_headers('X-Requested-With')
 @require_http_methods(['GET', 'HEAD', 'POST'])
 def activar_empleado(request, id):
     return _cambiar_estado_empleado(request, id, activar=True)
@@ -517,3 +541,47 @@ def asociar_usuario_empleado(request, id):
     else:
         messages.success(request, 'Usuario asociado correctamente. Se conservó el estado de la cuenta.')
     return redirect('seguridad:detalle_empleado', id=id)
+
+
+def _destino_edicion_empleado(request, empleado):
+    if not request.user.has_perm('seguridad.view_empleado'):
+        return reverse('core:home')
+    detalle = reverse('seguridad:detalle_empleado', args=[empleado.pk])
+    lista = reverse('seguridad:lista_empleados')
+    destino = request.POST.get('siguiente', request.GET.get('siguiente', ''))
+    if (url_has_allowed_host_and_scheme(
+            destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())
+            and urlsplit(destino).path in {lista, detalle}):
+        return destino
+    return detalle
+
+
+@login_required
+@permission_required('seguridad.change_empleado', raise_exception=True)
+@never_cache
+@require_http_methods(['GET', 'HEAD', 'POST'])
+def editar_empleado(request, id):
+    empleado = get_object_or_404(Empleado, pk=id)
+    siguiente = _destino_edicion_empleado(request, empleado)
+    form = EmpleadoEditarForm(request.POST if request.method == 'POST' else None, instance=empleado)
+    if request.method == 'POST' and form.is_valid():
+        if form.has_changed():
+            empleado = form.save(commit=False)
+            # Solo se escriben los datos editables: una baja o asociación concurrente
+            # no debe ser sobrescrita con el estado leído al abrir el formulario.
+            empleado.save(update_fields=[*form.fields, 'fecha_modificacion'])
+            messages.success(request, f'Empleado {empleado.codigo} actualizado correctamente.')
+        else:
+            messages.info(request, 'No se realizaron cambios en los datos del empleado.')
+        return redirect(siguiente)
+    return render(request, 'seguridad/form_empleado.html', {
+        'form': form, 'empleado': empleado, 'accion': 'Editar',
+        'modo_edicion': True, 'volver_url': siguiente,
+    })
+
+
+def _render_confirmacion(request, plantilla, contexto):
+    contexto['form_action'] = request.path
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        plantilla = 'seguridad/confirmacion_accion.html'
+    return render(request, plantilla, contexto)
