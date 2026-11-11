@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import PasswordChangeView
 from django.contrib.auth.models import Group, Permission
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Min, Q, Value
 from django.db.models.functions import Concat
 from django.core.paginator import Paginator
@@ -15,6 +16,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.vary import vary_on_headers
+from django.views.decorators.http import require_http_methods
 
 from .models import Empleado, Usuario
 from .forms import EmpleadoCrearForm, UsuarioCrearForm, UsuarioEditarForm, RolForm, ResetearPasswordForm, APPS_NEGOCIO
@@ -111,8 +113,10 @@ def lista_usuarios(request):
 @login_required
 @permission_required('seguridad.view_usuario', raise_exception=True)
 def detalle_usuario(request, id):
-    usuario = get_object_or_404(Usuario, pk=id)
-    return render(request, 'seguridad/detalle_usuario.html', {'usuario': usuario})
+    usuario = get_object_or_404(Usuario.objects.select_related('empleado').prefetch_related('groups'), pk=id)
+    return render(request, 'seguridad/detalle_usuario.html', {
+        'usuario': usuario, 'empleado_asociado': getattr(usuario, 'empleado', None),
+    })
 
 
 @login_required
@@ -160,6 +164,9 @@ def _destino_lista_usuarios(request):
 def _cambiar_estado_usuario(request, id, activar):
     usuario = get_object_or_404(Usuario, pk=id)
     siguiente = _destino_lista_usuarios(request)
+    if activar and Empleado.objects.filter(usuario=usuario, activo=False).exists():
+        messages.error(request, 'Primero debes reactivar al empleado asociado a esta cuenta.')
+        return redirect(siguiente)
     if not activar and usuario.pk == request.user.pk:
         messages.error(request, 'No puedes desactivar tu propia cuenta desde esta pantalla.')
         return redirect(siguiente)
@@ -327,7 +334,7 @@ def lista_empleados(request):
     estado = request.GET.get('estado', 'activo')
     if estado not in {'activo', 'inactivo'}:
         estado = 'activo'
-    empleados = Empleado.objects.filter(activo=(estado == 'activo'))
+    empleados = Empleado.objects.filter(activo=(estado == 'activo')).select_related('usuario')
     if consulta_aplicada:
         filtro = (
             Q(nombre_completo__icontains=consulta_aplicada)
@@ -370,3 +377,143 @@ def crear_empleado(request):
             return redirect('seguridad:lista_empleados')
         return redirect('seguridad:crear_empleado')
     return render(request, 'seguridad/form_empleado.html', {'form': form})
+
+
+def _destino_lista_empleados(request):
+    if not request.user.has_perm('seguridad.view_empleado'):
+        return reverse('core:home')
+    destino = request.POST.get('siguiente', request.GET.get('siguiente', ''))
+    lista = reverse('seguridad:lista_empleados')
+    if (url_has_allowed_host_and_scheme(
+            destino, allowed_hosts={request.get_host()}, require_https=request.is_secure())
+            and urlsplit(destino).path == lista):
+        return destino
+    return lista
+
+
+def _cambiar_estado_empleado(request, id, activar):
+    empleado = get_object_or_404(Empleado.objects.select_related('usuario'), pk=id)
+    siguiente = _destino_lista_empleados(request)
+    if not activar and empleado.usuario_id == request.user.pk:
+        messages.error(request, 'No puedes desactivar al empleado asociado a tu propia cuenta.')
+        return redirect(siguiente)
+    if request.method == 'POST':
+        with transaction.atomic():
+            # Bloquear primero el empleado y después su usuario, igual que al asociar.
+            empleado = get_object_or_404(Empleado.objects.select_for_update(), pk=id)
+            if not activar and empleado.usuario_id == request.user.pk:
+                messages.error(request, 'No puedes desactivar al empleado asociado a tu propia cuenta.')
+                return redirect(siguiente)
+            usuario = None
+            if not activar and empleado.usuario_id:
+                usuario = Usuario.objects.select_for_update().get(pk=empleado.usuario_id)
+            cambio = empleado.activo != activar
+            if cambio:
+                empleado.activo = activar
+                empleado.save(update_fields=['activo', 'fecha_modificacion'])
+            cambio_usuario = usuario is not None and usuario.is_active
+            if cambio_usuario:
+                usuario.is_active = False
+                usuario.save(update_fields=['is_active'])
+        if cambio or cambio_usuario:
+            estado = 'reactivado' if activar else 'desactivado'
+            mensaje = f'Empleado {empleado.codigo} {estado} correctamente.'
+            if not activar and usuario is not None:
+                mensaje += ' La cuenta asociada también está desactivada.'
+            messages.success(request, mensaje)
+        else:
+            estado = 'activado' if activar else 'desactivado'
+            messages.info(request, f'El empleado {empleado.codigo} ya estaba {estado}.')
+        return redirect(siguiente)
+    return render(request, 'seguridad/estado_empleado.html', {
+        'empleado': empleado,
+        'activar': activar,
+        'accion': 'Reactivar' if activar else 'Desactivar',
+        'siguiente': siguiente,
+    })
+
+
+@login_required
+@permission_required('seguridad.change_empleado', raise_exception=True)
+@never_cache
+@require_http_methods(['GET', 'HEAD', 'POST'])
+def desactivar_empleado(request, id):
+    return _cambiar_estado_empleado(request, id, activar=False)
+
+
+@login_required
+@permission_required('seguridad.change_empleado', raise_exception=True)
+@never_cache
+@require_http_methods(['GET', 'HEAD', 'POST'])
+def activar_empleado(request, id):
+    return _cambiar_estado_empleado(request, id, activar=True)
+
+
+@login_required
+@permission_required('seguridad.view_empleado', raise_exception=True)
+@never_cache
+def detalle_empleado(request, id):
+    empleado = get_object_or_404(Empleado.objects.select_related('usuario'), pk=id)
+    return render(request, 'seguridad/detalle_empleado.html', {'empleado': empleado})
+
+
+@login_required
+@permission_required(('seguridad.view_empleado', 'seguridad.change_empleado', 'seguridad.view_usuario'), raise_exception=True)
+@never_cache
+@require_http_methods(['GET'])
+def usuarios_disponibles_empleado(request, id):
+    empleado = get_object_or_404(Empleado, pk=id)
+    if not empleado.activo or empleado.usuario_id:
+        return render(request, 'seguridad/usuarios_disponibles.html', {
+            'no_disponible': True,
+        }, status=409)
+    consulta = request.GET.get('q', '').strip()
+    consulta_aplicada = consulta if len(consulta) >= 2 else ''
+    usuarios = Usuario.objects.filter(empleado__isnull=True)
+    if consulta_aplicada:
+        usuarios = usuarios.annotate(nombre_completo=Concat('first_name', Value(' '), 'last_name')).filter(
+            Q(username__icontains=consulta_aplicada) | Q(nombre_completo__icontains=consulta_aplicada)
+            | Q(email__icontains=consulta_aplicada),
+        )
+    paginador = Paginator(usuarios.order_by('username', 'pk'), 8)
+    pagina = paginador.get_page(request.GET.get('pagina'))
+    return render(request, 'seguridad/usuarios_disponibles.html', {
+        'usuarios': pagina, 'consulta_aplicada': consulta_aplicada,
+        'paginas': paginador.get_elided_page_range(pagina.number, on_each_side=1, on_ends=1),
+        'elipsis': paginador.ELLIPSIS,
+    })
+
+
+@login_required
+@permission_required(('seguridad.view_empleado', 'seguridad.change_empleado', 'seguridad.view_usuario'), raise_exception=True)
+@require_http_methods(['POST'])
+def asociar_usuario_empleado(request, id):
+    get_object_or_404(Empleado, pk=id)
+    error = ''
+    identificador = request.POST.get('usuario', '')
+    if not (identificador.isascii() and identificador.isdecimal() and len(identificador) <= 18):
+        error = 'Selecciona un usuario disponible.'
+    else:
+        try:
+            with transaction.atomic():
+                empleado = get_object_or_404(Empleado.objects.select_for_update(), pk=id)
+                usuario = Usuario.objects.select_for_update().filter(pk=int(identificador)).first()
+                if not empleado.activo:
+                    error = 'Primero debes reactivar al empleado para asociarle una cuenta.'
+                elif empleado.usuario_id:
+                    error = 'Este empleado ya tiene un usuario asociado.'
+                elif usuario is None:
+                    error = 'El usuario seleccionado ya no está disponible.'
+                elif Empleado.objects.filter(usuario=usuario).exists():
+                    error = 'El usuario seleccionado ya está asociado a otro empleado. Elige otro.'
+                else:
+                    empleado.usuario = usuario
+                    empleado.save(update_fields=['usuario', 'fecha_modificacion'])
+        except IntegrityError:
+            # La unicidad de la base protege también frente a asignaciones simultáneas.
+            error = 'El usuario seleccionado acaba de ser asignado. Actualiza la lista y elige otro.'
+    if error:
+        messages.error(request, error)
+    else:
+        messages.success(request, 'Usuario asociado correctamente. Se conservó el estado de la cuenta.')
+    return redirect('seguridad:detalle_empleado', id=id)

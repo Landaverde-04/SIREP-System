@@ -66,6 +66,12 @@ class ResetearPasswordForm(forms.Form):
 
 
 class UsuarioEditarForm(forms.ModelForm):
+    def clean_is_active(self):
+        activo = self.cleaned_data['is_active']
+        if activo and self.instance.pk and Empleado.objects.filter(usuario_id=self.instance.pk, activo=False).exists():
+            raise forms.ValidationError('Primero debes reactivar al empleado asociado a esta cuenta.')
+        return activo
+
     def __init__(self, *args, usuario_actual=None, **kwargs):
         super().__init__(*args, **kwargs)
         if usuario_actual is not None and self.instance.pk == usuario_actual.pk:

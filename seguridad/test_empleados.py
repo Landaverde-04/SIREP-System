@@ -45,7 +45,7 @@ class EmpleadosTests(TestCase):
         self.assertEqual(empleado.telefono, '')
         self.assertEqual(empleado.correo, '')
         self.assertEqual(Usuario.objects.count(), usuarios_antes)
-        self.assertFalse(any(campo.is_relation for campo in Empleado._meta.fields))
+        self.assertIsNone(empleado.usuario_id)
         self.assertEqual(empleado.codigo, f'EMP-{empleado.pk:06d}')
         self.assertIsNotNone(empleado.fecha_creacion)
 
@@ -191,7 +191,10 @@ class EmpleadosTests(TestCase):
         self.assertEqual(self.client.get(self.lista).status_code, 403)
         self.assertRedirects(self.client.post(self.crear, self.datos), self.crear)
         respuesta = self.client.get(self.crear)
-        self.assertContains(respuesta, 'Empleados')
+        self.assertContains(respuesta, reverse('core:modulo', kwargs={'modulo': 'seguridad'}))
+        modulo = self.client.get(reverse('core:modulo', kwargs={'modulo': 'seguridad'}))
+        self.assertContains(modulo, 'Empleados')
+        self.assertContains(modulo, self.crear)
         self.assertNotContains(respuesta, 'Volver al listado')
 
     def test_registro_exige_csrf(self):
@@ -199,3 +202,123 @@ class EmpleadosTests(TestCase):
         cliente.force_login(self.encargado)
         self.assertEqual(cliente.post(self.crear, self.datos).status_code, 403)
         self.assertFalse(Empleado.objects.exists())
+
+
+class EstadoEmpleadoTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.encargado = Usuario.objects.create_user('gestor-estado-empleados')
+        cls.encargado.user_permissions.set(Permission.objects.filter(
+            content_type__app_label='seguridad', codename__in=['view_empleado', 'change_empleado'],
+        ))
+        cls.consulta = Usuario.objects.create_user('consulta-estado-empleados')
+        cls.consulta.user_permissions.add(Permission.objects.get(codename='view_empleado'))
+        cls.empleado = Empleado.objects.create(
+            nombres='Ana', apellidos='López', cargo='Encargada de cocina', telefono='7777-8888',
+            correo='ana@example.com', fecha_ingreso=date(2026, 11, 10), salario_mensual=Decimal('450.25'),
+        )
+
+    def setUp(self):
+        self.client.force_login(self.encargado)
+        self.lista = reverse('seguridad:lista_empleados')
+        self.desactivar = reverse('seguridad:desactivar_empleado', args=[self.empleado.pk])
+        self.activar = reverse('seguridad:activar_empleado', args=[self.empleado.pk])
+
+    def test_get_confirma_sin_cambiar_estado(self):
+        for url, texto in ((self.desactivar, 'Sí, desactivar'), (self.activar, 'Sí, reactivar')):
+            with self.subTest(url=url):
+                respuesta = self.client.get(url)
+                self.assertContains(respuesta, texto)
+                self.assertContains(respuesta, 'Cancelar')
+                self.assertContains(respuesta, self.empleado.codigo)
+                self.assertIn('no-store', respuesta.headers['Cache-Control'])
+                self.empleado.refresh_from_db()
+                self.assertTrue(self.empleado.activo)
+
+    def test_desactiva_sin_perder_datos_ni_cambiar_usuarios(self):
+        anterior = Empleado.objects.values().get(pk=self.empleado.pk)
+        usuarios = list(Usuario.objects.order_by('pk').values())
+        self.assertRedirects(self.client.post(self.desactivar), self.lista)
+        actual = Empleado.objects.values().get(pk=self.empleado.pk)
+        self.assertFalse(actual['activo'])
+        self.assertGreater(actual['fecha_modificacion'], anterior['fecha_modificacion'])
+        for campo in anterior.keys() - {'activo', 'fecha_modificacion'}:
+            self.assertEqual(actual[campo], anterior[campo], campo)
+        self.assertEqual(usuarios, list(Usuario.objects.order_by('pk').values()))
+        self.assertNotIn(self.empleado, self.client.get(self.lista).context['empleados'])
+        self.assertIn(self.empleado, self.client.get(self.lista, {'estado': 'inactivo'}).context['empleados'])
+
+    def test_reactiva_empleado_y_conserva_salario(self):
+        self.client.post(self.desactivar)
+        self.assertRedirects(self.client.post(self.activar), self.lista)
+        self.empleado.refresh_from_db()
+        self.assertTrue(self.empleado.activo)
+        self.assertEqual(self.empleado.salario_mensual, Decimal('450.25'))
+        self.assertIn(self.empleado, self.client.get(self.lista).context['empleados'])
+
+    def test_repetir_la_accion_no_reescribe_el_registro(self):
+        for url in (self.desactivar, self.activar):
+            self.client.post(url)
+            anterior = Empleado.objects.values().get(pk=self.empleado.pk)
+            self.client.post(url)
+            self.assertEqual(anterior, Empleado.objects.values().get(pk=self.empleado.pk))
+
+    def test_listado_ofrece_accion_segun_estado_y_permiso(self):
+        self.assertContains(self.client.get(self.lista), self.desactivar)
+        self.assertNotContains(self.client.get(self.lista), self.activar)
+        self.client.post(self.desactivar)
+        respuesta = self.client.get(self.lista, {'estado': 'inactivo'})
+        self.assertContains(respuesta, self.activar)
+        self.assertNotContains(respuesta, self.desactivar)
+        self.client.force_login(self.consulta)
+        self.assertNotContains(self.client.get(self.lista, {'estado': 'inactivo'}), self.activar)
+
+    def test_requiere_login_y_permiso_tambien_en_post(self):
+        for url in (self.desactivar, self.activar):
+            with self.subTest(url=url):
+                self.client.logout()
+                self.assertEqual(self.client.get(url).status_code, 302)
+                self.assertEqual(self.client.post(url).status_code, 302)
+                self.client.force_login(self.consulta)
+                self.assertEqual(self.client.get(url).status_code, 403)
+                self.assertEqual(self.client.post(url).status_code, 403)
+        self.empleado.refresh_from_db()
+        self.assertTrue(self.empleado.activo)
+
+    def test_exige_csrf_para_ambas_acciones(self):
+        cliente = Client(enforce_csrf_checks=True)
+        cliente.force_login(self.encargado)
+        for url in (self.desactivar, self.activar):
+            self.assertEqual(cliente.post(url).status_code, 403)
+
+    def test_empleado_inexistente_devuelve_404(self):
+        for nombre in ('desactivar_empleado', 'activar_empleado'):
+            url = reverse('seguridad:' + nombre, args=[999999])
+            self.assertEqual(self.client.get(url).status_code, 404)
+            self.assertEqual(self.client.post(url).status_code, 404)
+
+    def test_conserva_filtros_y_pagina_al_volver(self):
+        destino = self.lista + '?q=Ana&estado=activo&pagina=2'
+        respuesta = self.client.get(self.desactivar, {'siguiente': destino})
+        self.assertEqual(respuesta.context['siguiente'], destino)
+        self.assertRedirects(self.client.post(self.desactivar, {'siguiente': destino}), destino)
+
+    def test_rechaza_destinos_ajenos_al_listado(self):
+        for destino in ('https://ajeno.example/seguridad/empleados/', '//ajeno.example/seguridad/empleados/',
+                        '/seguridad/usuarios/', '/seguridad/empleados/crear/'):
+            with self.subTest(destino=destino):
+                respuesta = self.client.get(self.desactivar, {'siguiente': destino})
+                self.assertEqual(respuesta.context['siguiente'], self.lista)
+                self.assertRedirects(self.client.post(self.desactivar, {'siguiente': destino}), self.lista)
+
+    def test_permiso_cambio_sin_consulta_regresa_al_inicio(self):
+        self.consulta.user_permissions.set([Permission.objects.get(codename='change_empleado')])
+        self.client.force_login(self.consulta)
+        self.assertRedirects(self.client.post(self.desactivar), reverse('core:home'))
+
+    def test_no_admite_otros_metodos(self):
+        for url in (self.desactivar, self.activar):
+            self.assertEqual(self.client.put(url).status_code, 405)
+            self.assertEqual(self.client.delete(url).status_code, 405)
+        self.empleado.refresh_from_db()
+        self.assertTrue(self.empleado.activo)

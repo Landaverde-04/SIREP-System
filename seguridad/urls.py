@@ -22,6 +22,11 @@ urlpatterns = [
     # Empleados: independientes de las cuentas de usuario.
     path('empleados/', views.lista_empleados, name='lista_empleados'),
     path('empleados/crear/', views.crear_empleado, name='crear_empleado'),
+    path('empleados/<int:id>/', views.detalle_empleado, name='detalle_empleado'),
+    path('empleados/<int:id>/usuarios-disponibles/', views.usuarios_disponibles_empleado, name='usuarios_disponibles_empleado'),
+    path('empleados/<int:id>/asociar-usuario/', views.asociar_usuario_empleado, name='asociar_usuario_empleado'),
+    path('empleados/<int:id>/desactivar/', views.desactivar_empleado, name='desactivar_empleado'),
+    path('empleados/<int:id>/activar/', views.activar_empleado, name='activar_empleado'),
 
     # Roles
     path('roles/', views.lista_roles, name='lista_roles'),

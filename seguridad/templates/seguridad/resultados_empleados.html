@@ -13,6 +13,7 @@
                         <th scope="col">Fecha de ingreso</th>
                         <th scope="col" class="text-end">Salario mensual</th>
                         <th scope="col">Estado</th>
+                        {% if perms.seguridad.change_empleado %}<th scope="col"><span class="visually-hidden">Acciones</span></th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -22,7 +23,7 @@
                         <td>
                             <div class="d-flex align-items-center gap-2">
                                 <span class="usuarios-avatar" aria-hidden="true">{{ empleado.nombres|slice:":1"|upper }}{{ empleado.apellidos|slice:":1"|upper }}</span>
-                                <span class="fw-medium">{{ empleado.nombres }} {{ empleado.apellidos }}</span>
+                                <a href="{% url 'seguridad:detalle_empleado' empleado.id %}" class="fw-medium text-decoration-none">{{ empleado.nombres }} {{ empleado.apellidos }}</a>
                             </div>
                         </td>
                         <td>{{ empleado.cargo }}</td>
@@ -34,6 +35,23 @@
                         <td class="text-nowrap">{{ empleado.fecha_ingreso|date:"d/m/Y" }}</td>
                         <td class="text-end text-nowrap">{% if empleado.salario_mensual is not None %}${{ empleado.salario_mensual|unlocalize }}{% else %}<span class="text-muted small">Sin registrar</span>{% endif %}</td>
                         <td>{% if empleado.activo %}<span class="badge bg-success-subtle text-success border border-success-subtle">Activado</span>{% else %}<span class="badge bg-secondary-subtle text-secondary border">Desactivado</span>{% endif %}</td>
+                        {% if perms.seguridad.change_empleado %}
+                        <td class="text-end text-nowrap">
+                            {% if empleado.activo %}
+                            {% if empleado.usuario_id != request.user.pk %}
+                            <a href="{% url 'seguridad:desactivar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                               class="btn btn-sm btn-outline-danger" title="Desactivar empleado {{ empleado }}" aria-label="Desactivar empleado {{ empleado }}">
+                                <i class="bi bi-person-dash" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                            {% else %}
+                            <a href="{% url 'seguridad:activar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                               class="btn btn-sm btn-outline-success" title="Reactivar empleado {{ empleado }}" aria-label="Reactivar empleado {{ empleado }}">
+                                <i class="bi bi-person-check" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 </tbody>

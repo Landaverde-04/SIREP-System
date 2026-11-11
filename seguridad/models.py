@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator
@@ -22,6 +23,10 @@ class Usuario(AbstractUser):
 
 
 class Empleado(ModeloBase):
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='empleado',
+        blank=True, null=True,
+    )
     nombres = models.CharField(max_length=100)
     apellidos = models.CharField(max_length=100)
     cargo = models.CharField(max_length=100)

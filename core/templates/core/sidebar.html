@@ -1,192 +1,34 @@
-<aside id="sidebar" class="d-flex flex-column" style="min-width: 240px; max-width: 240px; background-color: #1e2d3d; min-height: 100vh;">
-
-    {# Marca del sistema + botón de colapso #}
-    <div class="px-3 py-3 d-flex align-items-center justify-content-between" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
-        <a href="{% url 'core:home' %}" class="text-white text-decoration-none d-flex align-items-center gap-2 overflow-hidden">
-            <i class="bi bi-cup-hot fs-5 text-info flex-shrink-0"></i>
-            <span class="fw-semibold sidebar-label text-truncate" style="font-size: 0.95rem;">SIREP</span>
+<aside id="sidebar" class="app-sidebar d-flex flex-column" aria-label="Navegación principal">
+    <div class="sidebar-marca">
+        <a href="{% url 'core:home' %}" class="sidebar-logo" aria-label="SIREP, inicio">
+            <span class="marca-icono"><i class="bi bi-cup-hot" aria-hidden="true"></i></span>
+            <span class="sidebar-label"><strong>SIREP</strong><small>Gestión de restaurante</small></span>
         </a>
-        <button id="sidebar-toggle"
-                class="btn btn-sm d-flex align-items-center justify-content-center flex-shrink-0 ms-1"
-                style="color: rgba(255,255,255,0.45); background: none; border: none; width: 28px; height: 28px; padding: 0;">
-            <i class="bi bi-chevron-left d-none d-md-inline sidebar-chevron"></i>
-            <i class="bi bi-x-lg d-inline d-md-none"></i>
+        <button id="sidebar-toggle" class="sidebar-colapsar" aria-label="Contraer o expandir menú" aria-expanded="true">
+            <i class="bi bi-chevron-left sidebar-chevron d-none d-md-inline" aria-hidden="true"></i><i class="bi bi-x-lg d-md-none" aria-hidden="true"></i>
         </button>
     </div>
-
-    {# Links de navegacion #}
-    <nav class="flex-grow-1 px-2 py-3">
-        <ul class="nav flex-column gap-1">
-
-            <li class="nav-item">
-                <a href="{% url 'core:home' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Inicio">
-                    <i class="bi bi-speedometer2 flex-shrink-0"></i>
-                    <span class="sidebar-label">Inicio</span>
-                </a>
-            </li>
-
-            {# Seccion Reservaciones #}
-            {% if perms.reservaciones.view_reservacion or perms.reservaciones.add_atencion %}
-            <li class="sidebar-seccion mt-3 mb-1 px-3">
-                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Reservaciones</span>
-            </li>
-
-            {% if perms.reservaciones.view_reservacion %}
-            <li class="nav-item">
-                <a href="{% url 'reservaciones:lista_reservaciones' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Reservaciones">
-                    <i class="bi bi-calendar-check flex-shrink-0"></i>
-                    <span class="sidebar-label">Reservaciones</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{% url 'reservaciones:consultar_disponibilidad' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Disponibilidad">
-                    <i class="bi bi-grid-3x3-gap flex-shrink-0"></i>
-                    <span class="sidebar-label">Disponibilidad</span>
-                </a>
-            </li>
-            {% endif %}
-
-            {% if perms.reservaciones.add_atencion %}
-            <li class="nav-item">
-                <a href="{% url 'reservaciones:panel_ingresos' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Ingreso de clientes">
-                    <i class="bi bi-door-open flex-shrink-0"></i>
-                    <span class="sidebar-label">Ingreso de clientes</span>
-                </a>
-            </li>
-            {% endif %}
-            {% endif %}
-
-            {# Seccion Pedidos #}
-            {% if perms.pedidos.view_pedido %}
-            <li class="sidebar-seccion mt-3 mb-1 px-3">
-                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Pedidos</span>
-            </li>
-            <li class="nav-item">
-                <a href="{% url 'pedidos:lista_pedidos' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Pedidos">
-                    <i class="bi bi-receipt flex-shrink-0"></i>
-                    <span class="sidebar-label">Pedidos</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{% url 'pedidos:cocina' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Cocina">
-                    <i class="bi bi-fire flex-shrink-0"></i>
-                    <span class="sidebar-label">Cocina</span>
-                </a>
-            </li>
-            {% endif %}
-
-            {# Seccion Administracion #}
-            {% if perms.administracion.view_mesa or perms.administracion.view_producto or perms.administracion.view_cliente %}
-            <li class="sidebar-seccion mt-3 mb-1 px-3">
-                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Administración</span>
-            </li>
-            {% if perms.administracion.view_mesa %}
-            <li class="nav-item">
-                <a href="{% url 'administracion:lista_mesas' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Mesas">
-                    <i class="bi bi-table flex-shrink-0"></i>
-                    <span class="sidebar-label">Mesas</span>
-                </a>
-            </li>
-            {% endif %}
-            {% if perms.administracion.view_producto %}
-            <li class="nav-item">
-                <a href="{% url 'administracion:lista_productos' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Menú">
-                    <i class="bi bi-journal-text flex-shrink-0"></i>
-                    <span class="sidebar-label">Menú</span>
-                </a>
-            </li>
-            {% endif %}
-            {% if perms.administracion.view_cliente %}
-            <li class="nav-item">
-                <a href="{% url 'administracion:lista_clientes' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Clientes">
-                    <i class="bi bi-person-lines-fill flex-shrink-0"></i>
-                    <span class="sidebar-label">Clientes</span>
-                </a>
-            </li>
-            {% endif %}
-            {% endif %}
-
-            {# Seccion Seguridad: solo se muestra si tiene acceso a al menos un item #}
-            {% if perms.seguridad.view_usuario or perms.auth.view_group or perms.seguridad.view_empleado or perms.seguridad.add_empleado %}
-            <li class="sidebar-seccion mt-3 mb-1 px-3">
-                <span class="text-uppercase fw-semibold" style="font-size: 0.65rem; letter-spacing: 0.08em; color: rgba(255,255,255,0.35);">Seguridad</span>
-            </li>
-
-            {% if perms.seguridad.view_usuario %}
-            <li class="nav-item">
-                <a href="{% url 'seguridad:lista_usuarios' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Usuarios">
-                    <i class="bi bi-people flex-shrink-0"></i>
-                    <span class="sidebar-label">Usuarios</span>
-                </a>
-            </li>
-            {% endif %}
-
-            {% if perms.seguridad.view_empleado or perms.seguridad.add_empleado %}
-            <li class="nav-item">
-                <a href="{% if perms.seguridad.view_empleado %}{% url 'seguridad:lista_empleados' %}{% else %}{% url 'seguridad:crear_empleado' %}{% endif %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Empleados">
-                    <i class="bi bi-person-badge flex-shrink-0"></i>
-                    <span class="sidebar-label">Empleados</span>
-                </a>
-            </li>
-            {% endif %}
-
-            {% if perms.auth.view_group %}
-            <li class="nav-item">
-                <a href="{% url 'seguridad:lista_roles' %}"
-                   class="nav-link sidebar-link d-flex align-items-center gap-2 rounded px-3 py-2"
-                   title="Roles">
-                    <i class="bi bi-shield-lock flex-shrink-0"></i>
-                    <span class="sidebar-label">Roles</span>
-                </a>
-            </li>
-            {% endif %}
-            {% endif %}
-
-        </ul>
+    <nav class="sidebar-navegacion flex-grow-1">
+        <p class="sidebar-seccion">ESPACIO DE TRABAJO</p>
+        <a href="{% url 'core:home' %}" class="sidebar-link {% if request.resolver_match.view_name == 'core:home' %}active{% endif %}" {% if request.resolver_match.view_name == 'core:home' %}aria-current="page"{% endif %} title="Inicio">
+            <span class="sidebar-item-icono"><i class="bi bi-house-door" aria-hidden="true"></i></span><span class="sidebar-label">Inicio</span>
+        </a>
+        <p class="sidebar-seccion mt-4">MÓDULOS</p>
+        {% for modulo in modulos_navegacion %}
+        <a href="{{ modulo.url }}" class="sidebar-link {% if modulo_actual == modulo.clave %}active{% endif %}" {% if modulo_actual == modulo.clave %}aria-current="page"{% endif %} title="{{ modulo.nombre }}">
+            <span class="sidebar-item-icono"><i class="bi {{ modulo.icono }}" aria-hidden="true"></i></span><span class="sidebar-label">{{ modulo.nombre }}</span>
+            <i class="bi bi-chevron-right sidebar-label sidebar-flecha" aria-hidden="true"></i>
+        </a>
+        {% endfor %}
     </nav>
-
-    {# Usuario y cierre de sesion #}
-    <div class="px-2 py-3" style="border-top: 1px solid rgba(255,255,255,0.08);">
-        {% if user.is_authenticated %}
-            <a href="{% url 'seguridad:mi_perfil' %}"
-               class="sidebar-link d-flex align-items-center gap-2 mb-2 px-3 py-2 rounded"
-               title="{{ user.username }}">
-                <i class="bi bi-person-circle fs-5 flex-shrink-0"></i>
-                <span class="small sidebar-label">{{ user.username }}</span>
-            </a>
-            <form method="post" action="{% url 'seguridad:logout' %}">
-                {% csrf_token %}
-                <button type="submit"
-                        class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-2"
-                        style="background-color: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12);"
-                        title="Cerrar sesión">
-                    <i class="bi bi-box-arrow-left flex-shrink-0"></i>
-                    <span class="sidebar-label">Cerrar sesión</span>
-                </button>
-            </form>
-        {% endif %}
+    <div class="sidebar-pie">
+        <a href="{% url 'seguridad:mi_perfil' %}" class="sidebar-link sidebar-perfil" title="Mi perfil">
+            <span class="perfil-mini-avatar">{{ user.username|slice:":1"|upper }}</span>
+            <span class="sidebar-label overflow-hidden"><strong class="d-block text-truncate">{{ user.get_short_name|default:user.username }}</strong><small>Mi perfil</small></span>
+        </a>
+        <form method="post" action="{% url 'seguridad:logout' %}">
+            {% csrf_token %}
+            <button class="sidebar-link sidebar-salir w-100" type="submit" title="Cerrar sesión"><span class="sidebar-item-icono"><i class="bi bi-box-arrow-right" aria-hidden="true"></i></span><span class="sidebar-label">Cerrar sesión</span></button>
+        </form>
     </div>
-
 </aside>
