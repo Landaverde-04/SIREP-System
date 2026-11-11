@@ -516,10 +516,13 @@ class VistasCobroTests(DatosCobro):
         self.assertContains(self.client.get(reverse('cobro:historial')), f'#{cobro.pk}')
 
     def test_sidebar_respeta_permiso(self):
+        modulo = reverse('core:modulo', kwargs={'modulo': 'cobro'})
         destino = reverse('cobro:lista_atenciones')
-        self.assertContains(self.client.get(reverse('core:home')), f'href="{destino}"')
+        self.assertContains(self.client.get(reverse('core:home')), f'href="{modulo}"')
+        self.assertContains(self.client.get(modulo), f'href="{destino}"')
         self.client.force_login(self.sin_permisos)
-        self.assertNotContains(self.client.get(reverse('core:home')), f'href="{destino}"')
+        self.assertNotContains(self.client.get(reverse('core:home')), f'href="{modulo}"')
+        self.assertEqual(self.client.get(modulo).status_code, 403)
 
     def test_atencion_inexistente_es_404(self):
         self.assertEqual(self.client.get(reverse('cobro:detalle_consumo', args=[999999])).status_code, 404)

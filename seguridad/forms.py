@@ -2,7 +2,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from django import forms
-from .models import Usuario
+from .models import Empleado, Usuario
 
 
 APPS_NEGOCIO = ['seguridad', 'administracion', 'reservaciones', 'pedidos', 'cobro']
@@ -66,6 +66,20 @@ class ResetearPasswordForm(forms.Form):
 
 
 class UsuarioEditarForm(forms.ModelForm):
+    def clean_is_active(self):
+        activo = self.cleaned_data['is_active']
+        if activo and self.instance.pk and Empleado.objects.filter(usuario_id=self.instance.pk, activo=False).exists():
+            raise forms.ValidationError('Primero debes reactivar al empleado asociado a esta cuenta.')
+        return activo
+
+    def __init__(self, *args, usuario_actual=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if usuario_actual is not None and self.instance.pk == usuario_actual.pk:
+            # Django ignora valores enviados para un campo deshabilitado y usa
+            # el valor original, incluso si se modifica el HTML o el POST.
+            self.fields['is_active'].disabled = True
+            self.fields['is_active'].help_text = 'Tu cuenta debe permanecer activada mientras la estás utilizando.'
+
     groups = forms.ModelMultipleChoiceField(
         queryset=Group.objects.all(),
         required=False,
@@ -83,3 +97,32 @@ class UsuarioEditarForm(forms.ModelForm):
             'email': 'Correo electrónico',
             'is_active': 'Usuario activo',
         }
+
+
+class EmpleadoCrearForm(forms.ModelForm):
+    class Meta:
+        model = Empleado
+        fields = ('nombres', 'apellidos', 'cargo', 'telefono', 'correo', 'fecha_ingreso', 'salario_mensual')
+        labels = {'salario_mensual': 'Salario mensual (USD)'}
+        widgets = {
+            'telefono': forms.TextInput(attrs={'type': 'tel', 'autocomplete': 'tel'}),
+            'fecha_ingreso': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'salario_mensual': forms.NumberInput(attrs={'min': '0', 'step': '0.01', 'placeholder': 'Ej.: 450.00'}),
+        }
+        help_texts = {
+            'cargo': 'Escribe el cargo del empleado; por ejemplo, mesero o cocinero.',
+            'salario_mensual': 'Opcional. Salario base mensual en dólares, sin descuentos ni horas extra.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs['class'] = 'form-control'
+        self.fields['fecha_ingreso'].input_formats = ['%Y-%m-%d']
+
+    def clean(self):
+        datos = super().clean()
+        for nombre in ('nombres', 'apellidos', 'cargo'):
+            if nombre in datos:
+                datos[nombre] = ' '.join(datos[nombre].split())
+        return datos

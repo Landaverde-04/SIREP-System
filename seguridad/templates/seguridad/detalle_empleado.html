@@ -1,0 +1,76 @@
+{% extends "core/base.html" %}
+{% load static l10n %}
+{% block titulo %}{{ empleado }} - Empleados - SIREP{% endblock %}
+{% block estilos_extra %}<link rel="stylesheet" href="{% static 'seguridad/css/detalle_empleado.css' %}">{% endblock %}
+{% block contenido %}
+<nav class="ruta-pagina" aria-label="Ruta de navegación"><a href="{% url 'core:modulo' modulo='seguridad' %}">Seguridad</a><i class="bi bi-chevron-right" aria-hidden="true"></i><a href="{% url 'seguridad:lista_empleados' %}">Empleados</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span>Detalle</span></nav>
+<section class="perfil-portada">
+    <span class="perfil-avatar" aria-hidden="true">{{ empleado.nombres|slice:":1"|upper }}{{ empleado.apellidos|slice:":1"|upper }}</span>
+    <div class="perfil-titulo"><span class="etiqueta-seccion">EXPEDIENTE DEL EMPLEADO</span><h1>{{ empleado }}</h1><div class="perfil-subtitulo"><span>{{ empleado.codigo }}</span><span aria-hidden="true">·</span><span>{{ empleado.cargo }}</span><span class="perfil-estado {% if not empleado.activo %}inactivo{% endif %}">{% if empleado.activo %}Activado{% else %}Desactivado{% endif %}</span></div></div>
+</section>
+<div class="perfil-acciones">
+    <a href="{% url 'seguridad:lista_empleados' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al listado</a>
+    {% if perms.seguridad.change_empleado %}
+        {% if empleado.activo %}{% if empleado.usuario_id != request.user.pk %}<a href="{% url 'seguridad:desactivar_empleado' empleado.id %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-person-dash me-1" aria-hidden="true"></i>Desactivar empleado</a>{% endif %}
+        {% else %}<a href="{% url 'seguridad:activar_empleado' empleado.id %}" class="btn btn-outline-success btn-sm"><i class="bi bi-person-check me-1" aria-hidden="true"></i>Reactivar empleado</a>{% endif %}
+    {% endif %}
+</div>
+<div class="row g-4">
+    <div class="col-xl-8">
+        <section class="perfil-panel mb-4"><div class="perfil-panel-encabezado"><i class="bi bi-person-vcard" aria-hidden="true"></i><div><h2>Información personal</h2><p>Datos de identificación y contacto</p></div></div>
+            <dl class="perfil-datos"><div><dt>Nombres</dt><dd>{{ empleado.nombres }}</dd></div><div><dt>Apellidos</dt><dd>{{ empleado.apellidos }}</dd></div><div><dt>Teléfono</dt><dd>{{ empleado.telefono|default:"Sin registrar" }}</dd></div><div><dt>Correo electrónico</dt><dd>{{ empleado.correo|default:"Sin registrar" }}</dd></div></dl>
+        </section>
+        <section class="perfil-panel"><div class="perfil-panel-encabezado"><i class="bi bi-briefcase" aria-hidden="true"></i><div><h2>Información laboral</h2><p>Su puesto y condiciones registradas</p></div></div>
+            <dl class="perfil-datos"><div><dt>Cargo</dt><dd>{{ empleado.cargo }}</dd></div><div><dt>Fecha de ingreso</dt><dd>{{ empleado.fecha_ingreso|date:"d \d\e F \d\e Y" }}</dd></div><div><dt>Salario base mensual</dt><dd>{% if empleado.salario_mensual is not None %}${{ empleado.salario_mensual|unlocalize }} <span class="text-muted fw-normal small">USD / mes</span>{% else %}Sin registrar{% endif %}</dd></div><div><dt>Estado del empleado</dt><dd>{% if empleado.activo %}Personal activo{% else %}Personal desactivado{% endif %}</dd></div></dl>
+            <div class="perfil-nota"><i class="bi bi-info-circle" aria-hidden="true"></i><span>El salario corresponde al monto base mensual registrado. No incluye cálculos de descuentos, horas extra ni planilla.</span></div>
+        </section>
+    </div>
+    <div class="col-xl-4">
+        <section class="perfil-panel mb-4"><div class="perfil-panel-encabezado"><i class="bi bi-shield-check" aria-hidden="true"></i><div><h2>Cuenta de usuario</h2><p>Acceso asociado al sistema</p></div></div><div class="perfil-cuenta">
+            {% if empleado.usuario_id %}
+                <div class="perfil-cuenta-identidad"><i class="bi bi-person-circle" aria-hidden="true"></i><div><strong>{{ empleado.usuario.username }}</strong><small>{% if empleado.usuario_id == request.user.pk %}Tu cuenta{% else %}Usuario asociado{% endif %}</small></div></div>
+                <span class="perfil-estado {% if not empleado.usuario.is_active %}inactivo{% endif %} mb-3">{% if empleado.usuario.is_active %}Activada{% else %}Desactivada{% endif %}</span>
+                <p>La relación con esta cuenta se conserva al desactivar al empleado.</p>
+                {% if perms.seguridad.view_usuario %}<a href="{% url 'seguridad:detalle_usuario' empleado.usuario_id %}" class="btn btn-outline-primary btn-sm">Ver usuario <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>{% endif %}
+                {% if not empleado.usuario.is_active %}<p class="mt-3 mb-0">Reactivar al empleado no reactiva automáticamente su cuenta.</p>{% endif %}
+            {% else %}
+                <div class="perfil-cuenta-identidad"><i class="bi bi-person-plus" aria-hidden="true"></i><div><strong>Sin usuario asociado</strong><small>La cuenta de acceso es opcional</small></div></div>
+                <p>Si este empleado necesita utilizar SIREP, puedes vincularlo con una cuenta disponible.</p>
+                {% if not empleado.activo %}<div class="alert alert-secondary small mb-0">Primero debes reactivar al empleado para asociarle una cuenta.</div>
+                {% elif perms.seguridad.change_empleado and perms.seguridad.view_usuario %}<button id="abrir-asociacion" type="button" class="btn btn-primary btn-sm" aria-haspopup="dialog" aria-controls="modal-asociar-usuario"><i class="bi bi-person-plus me-1" aria-hidden="true"></i>Asociar usuario</button><noscript><p class="small mt-2">Activa JavaScript para abrir el selector.</p></noscript>{% endif %}
+            {% endif %}
+        </div></section>
+        <section class="perfil-panel"><div class="perfil-panel-encabezado"><i class="bi bi-clock-history" aria-hidden="true"></i><div><h2>Registro interno</h2><p>Fechas de este expediente</p></div></div><div class="px-4 py-2"><div class="perfil-meta"><i class="bi bi-plus-circle" aria-hidden="true"></i><div><small>Registrado el</small><strong>{{ empleado.fecha_creacion|date:"d/m/Y · H:i" }}</strong></div></div><div class="perfil-meta"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i><div><small>Última actualización</small><strong>{{ empleado.fecha_modificacion|date:"d/m/Y · H:i" }}</strong></div></div></div></section>
+    </div>
+</div>
+{% if empleado.activo and not empleado.usuario_id and perms.seguridad.change_empleado and perms.seguridad.view_usuario %}
+<dialog id="modal-asociar-usuario" class="asociar-usuario-modal p-0" aria-labelledby="titulo-asociacion" aria-describedby="descripcion-asociacion" data-lista-url="{% url 'seguridad:usuarios_disponibles_empleado' empleado.id %}">
+    <div class="d-flex align-items-center justify-content-between gap-3 border-bottom px-4 py-3">
+        <h5 id="titulo-asociacion" class="mb-0">Asociar usuario</h5>
+        <button type="button" class="btn-close" data-cerrar-asociacion aria-label="Cerrar selector de usuarios"></button>
+    </div>
+    <div class="p-4">
+        <p id="descripcion-asociacion" class="text-muted small mb-3">Elige una cuenta sin empleado asignado para <strong>{{ empleado }}</strong>. Se conservarán su contraseña, roles y estado actual.</p>
+        <form id="buscar-usuario-disponible" class="mb-3" action="{% url 'seguridad:usuarios_disponibles_empleado' empleado.id %}" method="get">
+            <label for="busqueda-usuario-disponible" class="form-label small">Buscar usuario</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-search" aria-hidden="true"></i></span>
+                <input id="busqueda-usuario-disponible" type="search" name="q" class="form-control" placeholder="Usuario, nombre o correo" autocomplete="off" aria-describedby="ayuda-usuario-disponible">
+                <button class="btn btn-outline-secondary" type="submit">Buscar</button>
+            </div>
+            <div id="ayuda-usuario-disponible" class="form-text">Escribe al menos 2 caracteres. Solo se muestran cuentas sin asignar.</div>
+        </form>
+        <div id="resultados-usuarios-disponibles" aria-live="polite" aria-busy="false"></div>
+    </div>
+    <form id="form-asociar-usuario" method="post" action="{% url 'seguridad:asociar_usuario_empleado' empleado.id %}" class="border-top px-4 py-3">
+        {% csrf_token %}
+        <p id="usuario-seleccionado" class="text-muted small mb-3">Selecciona un usuario para continuar.</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-cerrar-asociacion>Cancelar</button>
+            <button id="confirmar-asociacion" type="submit" class="btn btn-primary" disabled>Asociar usuario</button>
+        </div>
+    </form>
+</dialog>
+{% endif %}
+{% endblock %}
+{% block scripts_extra %}<script src="{% static 'seguridad/js/asociar_usuario.js' %}"></script>{% endblock %}

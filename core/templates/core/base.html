@@ -17,23 +17,25 @@
 
     {% block estilos_extra %}{% endblock %}
 </head>
-<body>
+<body class="app-body">
 
     <div class="d-flex" style="min-height: 100vh;">
 
         {% include "core/sidebar.html" %}
 
-        <div class="flex-grow-1 d-flex flex-column bg-light" style="min-width: 0;">
+        <div class="app-cuerpo flex-grow-1 d-flex flex-column" style="min-width: 0;">
 
-            {# Header visible solo en movil #}
-            <header class="d-flex d-md-none align-items-center px-3 py-2 bg-white border-bottom sticky-top shadow-sm">
-                <button id="sidebar-open-mobile" class="btn btn-sm btn-light me-2 p-1">
-                    <i class="bi bi-list fs-5"></i>
-                </button>
-                <span class="fw-semibold text-truncate" style="font-size: 0.9rem;">SIREP</span>
+            <header class="app-cabecera">
+                <div class="d-flex align-items-center gap-3 min-width-0">
+                    <button id="sidebar-open-mobile" class="btn btn-light d-md-none" aria-label="Abrir menú"><i class="bi bi-list fs-5" aria-hidden="true"></i></button>
+                    <span class="cabecera-contexto">{% if modulo_navegacion %}<i class="bi {{ modulo_navegacion.icono }} me-2" aria-hidden="true"></i>{{ modulo_navegacion.nombre }}{% else %}Vista general{% endif %}</span>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="cabecera-fecha d-none d-lg-inline">{% now "l, j \d\e F" %}</span>
+                    <a href="{% url 'seguridad:mi_perfil' %}" class="cabecera-usuario" title="Mi perfil"><span class="perfil-mini-avatar">{{ user.username|slice:":1"|upper }}</span><span class="d-none d-sm-inline">{{ user.get_short_name|default:user.username }}</span></a>
+                </div>
             </header>
-
-            <main class="flex-grow-1 p-4">
+            <main class="app-contenido flex-grow-1">
 
                 {% block contenido %}{% endblock %}
 
@@ -50,13 +52,13 @@
                 {% for message in messages %}{% if forloop.first %}
                 <div class="modal-header border-0
                     {% if message.tags == 'success' %}bg-success text-white
-                    {% elif message.tags == 'danger' %}bg-danger text-white
+                    {% elif message.tags == 'danger' or message.tags == 'error' %}bg-danger text-white
                     {% elif message.tags == 'warning' %}bg-warning text-dark
                     {% else %}bg-primary text-white{% endif %}">
                     <div class="d-flex align-items-center gap-2">
                         {% if message.tags == 'success' %}
                             <i class="bi bi-check-circle-fill fs-5"></i><span class="fw-semibold">Operación exitosa</span>
-                        {% elif message.tags == 'danger' %}
+                        {% elif message.tags == 'danger' or message.tags == 'error' %}
                             <i class="bi bi-x-circle-fill fs-5"></i><span class="fw-semibold">Error</span>
                         {% elif message.tags == 'warning' %}
                             <i class="bi bi-exclamation-triangle-fill fs-5"></i><span class="fw-semibold">Advertencia</span>
