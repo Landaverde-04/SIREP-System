@@ -6,8 +6,8 @@
 <div class="perfil-acciones">
     <a href="{% url 'seguridad:lista_usuarios' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left" aria-hidden="true"></i> Volver al listado</a>
     {% if perms.seguridad.change_usuario %}<a href="{% url 'seguridad:editar_usuario' usuario.id %}" class="btn btn-primary btn-sm"><i class="bi bi-pencil me-1" aria-hidden="true"></i>Editar usuario</a><a href="{% url 'seguridad:resetear_password' usuario.id %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-key me-1" aria-hidden="true"></i>Resetear contraseña</a>
-        {% if usuario.is_active %}{% if usuario.pk != request.user.pk %}<a href="{% url 'seguridad:desactivar_usuario' usuario.id %}" class="btn btn-outline-danger btn-sm">Desactivar usuario</a>{% endif %}
-        {% elif not empleado_asociado or empleado_asociado.activo %}<a href="{% url 'seguridad:activar_usuario' usuario.id %}" class="btn btn-outline-success btn-sm">Activar usuario</a>{% endif %}
+        {% if usuario.is_active %}{% if usuario.pk != request.user.pk %}<a data-confirmar href="{% url 'seguridad:desactivar_usuario' usuario.id %}" class="btn btn-outline-danger btn-sm">Desactivar usuario</a>{% endif %}
+        {% elif not empleado_asociado or empleado_asociado.activo %}<a data-confirmar href="{% url 'seguridad:activar_usuario' usuario.id %}" class="btn btn-outline-success btn-sm">Activar usuario</a>{% endif %}
     {% endif %}
 </div>
 <div class="row g-4">

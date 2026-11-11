@@ -196,3 +196,17 @@ input[type="password"].form-control.is-invalid { background-image: none; }
     .sidebar-pie { padding-top: .25rem; padding-bottom: .5rem; }
     .sidebar-perfil { padding-top: .65rem; }
 }
+
+.confirmacion-seguridad { width: min(500px, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow-y: auto; border: 1px solid var(--sirep-borde); border-radius: 17px; padding: 0; color: var(--sirep-tinta); box-shadow: 0 20px 80px #12253733; }
+.confirmacion-seguridad::backdrop { background: rgba(15, 29, 44, .5); }
+.confirmacion-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--sirep-borde); }
+.confirmacion-cabecera h2 { font-size: 1.1rem; font-weight: 600; margin: 0; }
+.confirmacion-cuerpo { padding: 1.5rem; font-size: .88rem; }
+.confirmacion-cuerpo > p:last-child, .confirmacion-cuerpo > .alert:last-child { margin-bottom: 0; }
+.confirmacion-identidad { display: flex; align-items: center; gap: .9rem; margin-bottom: 1.4rem; }
+.confirmacion-identidad strong { display: block; overflow-wrap: anywhere; }
+.confirmacion-identidad small { color: var(--sirep-muted); font-size: .7rem; }
+.confirmacion-icono { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 14px; background: #fbeeed; color: #ba6861; font-size: 1.5rem; }
+.confirmacion-positiva { background: #eaf5ef; color: #439677; }
+.confirmacion-pie { display: flex; flex-wrap: wrap; gap: .65rem; justify-content: flex-end; padding: 1rem 1.5rem; border-top: 1px solid var(--sirep-borde); background: #fafbfd; }
+.confirmacion-pie .btn { font-size: .82rem; }

@@ -37,15 +37,19 @@
                         <td>{% if empleado.activo %}<span class="badge bg-success-subtle text-success border border-success-subtle">Activado</span>{% else %}<span class="badge bg-secondary-subtle text-secondary border">Desactivado</span>{% endif %}</td>
                         {% if perms.seguridad.change_empleado %}
                         <td class="text-end text-nowrap">
+                            <a href="{% url 'seguridad:editar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                               class="btn btn-sm btn-outline-primary" title="Editar empleado {{ empleado }}" aria-label="Editar empleado {{ empleado }}">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
                             {% if empleado.activo %}
                             {% if empleado.usuario_id != request.user.pk %}
-                            <a href="{% url 'seguridad:desactivar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                            <a data-confirmar href="{% url 'seguridad:desactivar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
                                class="btn btn-sm btn-outline-danger" title="Desactivar empleado {{ empleado }}" aria-label="Desactivar empleado {{ empleado }}">
                                 <i class="bi bi-person-dash" aria-hidden="true"></i>
                             </a>
                             {% endif %}
                             {% else %}
-                            <a href="{% url 'seguridad:activar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
+                            <a data-confirmar href="{% url 'seguridad:activar_empleado' empleado.id %}?siguiente={{ request.get_full_path|urlencode }}"
                                class="btn btn-sm btn-outline-success" title="Reactivar empleado {{ empleado }}" aria-label="Reactivar empleado {{ empleado }}">
                                 <i class="bi bi-person-check" aria-hidden="true"></i>
                             </a>
