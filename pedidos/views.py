@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
@@ -52,7 +52,12 @@ def lista_pedidos(request):
 @login_required
 @permission_required('pedidos.view_pedido', raise_exception=True)
 def detalle_pedido(request, id):
-    return render(request, 'pedidos/detalle.html', {'pedido': _obtener_pedido(id)})
+    pedido = _obtener_pedido(id)
+    acciones = [
+        accion for accion in pedido.acciones_disponibles
+        if request.user.has_perm(Pedido.PERMISOS_ESTADO[accion['estado']])
+    ]
+    return render(request, 'pedidos/detalle.html', {'pedido': pedido, 'acciones': acciones})
 
 
 def _procesar_formulario(request, pedido, accion):
@@ -107,15 +112,20 @@ def cocina(request):
         Pedido.objects.en_curso().filter(atencion__estado='ABIERTA')
         .select_related('mesa', 'atencion').prefetch_related(_con_detalles())
         .order_by('fecha_creacion', 'id'))
-    columnas = [{'titulo': titulo, 'pedidos': [p for p in pedidos if p.estado == estado]}
-                for estado, titulo in COLUMNAS_COCINA]
+    columnas = [{
+        'titulo': titulo,
+        'pedidos': [pedido for pedido in pedidos if pedido.estado == estado],
+        'puede_avanzar': request.user.has_perm(Pedido.PERMISOS_ESTADO[Pedido.TRANSICIONES[estado][0]]),
+    } for estado, titulo in COLUMNAS_COCINA]
     return render(request, 'pedidos/cocina.html', {'columnas': columnas})
 
 
 @login_required
-@permission_required('pedidos.cambiar_estado_pedido', raise_exception=True)
 @require_POST
 def cambiar_estado(request, id, estado):
+    permiso = Pedido.PERMISOS_ESTADO.get(estado)
+    if not permiso or not request.user.has_perm(permiso):
+        raise PermissionDenied
     get_object_or_404(Pedido, pk=id)  # 404 si no existe, antes de tocar nada
     try:
         pedido = ServicioPedidos().cambiar_estado(id, estado)

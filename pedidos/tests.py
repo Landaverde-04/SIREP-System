@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from django.contrib.auth.models import Permission
+from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
@@ -293,16 +293,49 @@ class PermisosTests(VistaBase):
 
     def test_cambiar_estado_no_acepta_get(self):
         pedido = self.crear_pedido()
-        self.entrar('view_pedido', 'cambiar_estado_pedido')
+        self.entrar('view_pedido', 'preparar_pedido')
         respuesta = self.client.get(reverse('pedidos:cambiar_estado', args=[pedido.pk, 'EN_PREPARACION']))
         self.assertEqual(respuesta.status_code, 405)
         pedido.refresh_from_db()
         self.assertEqual(pedido.estado, E.PENDIENTE)
 
 
+    def test_roles_base_separan_preparacion_entrega_y_cancelacion(self):
+        call_command('crear_roles_base', verbosity=0)
+        pedido = self.crear_pedido()
+        mesero = self.mesero
+        mesero.groups.add(Group.objects.get(name='Mesero'))
+        cocina = Usuario.objects.create_user('cocina')
+        cocina.groups.add(Group.objects.get(name='Encargado de cocina'))
+        detalle = reverse('pedidos:detalle_pedido', args=[pedido.pk])
+        tablero = reverse('pedidos:cocina')
+        preparar, listo, entregar, cancelar = [
+            reverse('pedidos:cambiar_estado', args=[pedido.pk, estado])
+            for estado in (E.EN_PREPARACION, E.LISTO, E.ENTREGADO, E.CANCELADO)
+        ]
+
+        self.client.force_login(mesero)
+        self.assertNotContains(self.client.get(detalle), preparar)
+        self.assertEqual(self.client.post(preparar).status_code, 403)
+        self.assertEqual(self.client.post(cancelar).status_code, 403)
+
+        self.client.force_login(cocina)
+        self.assertContains(self.client.get(tablero), preparar)
+        self.assertRedirects(self.client.post(preparar), detalle)
+        self.assertRedirects(self.client.post(listo), detalle)
+        self.assertNotContains(self.client.get(tablero), entregar)
+        self.assertEqual(self.client.post(entregar).status_code, 403)
+
+        self.client.force_login(mesero)
+        self.assertContains(self.client.get(detalle), entregar)
+        self.assertRedirects(self.client.post(entregar), detalle)
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.estado, E.ENTREGADO)
+
+
 class VistasTests(VistaBase):
     def setUp(self):
-        self.usuario = self.entrar('view_pedido', 'add_pedido', 'change_pedido', 'cambiar_estado_pedido')
+        self.usuario = self.entrar('view_pedido', 'add_pedido', 'change_pedido', 'preparar_pedido', 'entregar_pedido', 'cancelar_pedido')
 
     def test_crear_pedido_completo(self):
         url = reverse('pedidos:crear_pedido')
@@ -441,9 +474,8 @@ class DatosDemoTests(TestCase):
         call_command('datos_demo_pedidos', verbosity=0)
         call_command('datos_demo_pedidos', verbosity=0)
         self.assertEqual(Producto.objects.count(), 9)
-        from django.contrib.auth.models import Group
         mesero = Group.objects.get(name='Mesero')
         self.assertTrue(mesero.permissions.filter(codename='add_pedido').exists())
-        cocina = Group.objects.get(name='Cocina')
+        cocina = Group.objects.get(name='Encargado de cocina')
         self.assertFalse(cocina.permissions.filter(codename='add_pedido').exists())
-        self.assertTrue(cocina.permissions.filter(codename='cambiar_estado_pedido').exists())
+        self.assertTrue(cocina.permissions.filter(codename='preparar_pedido').exists())

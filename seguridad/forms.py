@@ -2,6 +2,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from django import forms
+from django.db.models import Q
 from .models import Empleado, Usuario
 
 
@@ -11,7 +12,8 @@ APPS_NEGOCIO = ['seguridad', 'administracion', 'reservaciones', 'pedidos', 'cobr
 class RolForm(forms.ModelForm):
     permissions = forms.ModelMultipleChoiceField(
         queryset=Permission.objects.filter(
-            content_type__app_label__in=APPS_NEGOCIO
+            Q(content_type__app_label__in=APPS_NEGOCIO)
+            | Q(content_type__app_label='auth', content_type__model='group')
         ).select_related('content_type').order_by('content_type__app_label', 'codename'),
         required=False,
         label='Permisos',

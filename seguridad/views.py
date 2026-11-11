@@ -5,10 +5,11 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import PasswordChangeView
-from django.contrib.auth.models import Group, Permission
+from django.contrib.auth.models import Group
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Min, Q, Value
 from django.db.models.functions import Concat
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.urls import reverse, reverse_lazy
@@ -18,31 +19,63 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.http import require_http_methods
 
+from core.navegacion import MODULOS
+
 from .models import Empleado, Usuario
-from .forms import EmpleadoCrearForm, EmpleadoEditarForm, UsuarioCrearForm, UsuarioEditarForm, RolForm, ResetearPasswordForm, APPS_NEGOCIO
+from .forms import EmpleadoCrearForm, EmpleadoEditarForm, UsuarioCrearForm, UsuarioEditarForm, RolForm, ResetearPasswordForm
 
 
 _ACCIONES_ES = {
+    'view': 'Ver',
     'add': 'Agregar',
     'change': 'Modificar',
     'delete': 'Eliminar',
-    'view': 'Ver',
 }
 
 
-def _permisos_agrupados():
-    permisos = Permission.objects.filter(
-        content_type__app_label__in=APPS_NEGOCIO
-    ).select_related('content_type').order_by('content_type__app_label', 'codename')
-    resultado = []
-    for app_label, grupo in groupby(permisos, key=lambda p: p.content_type.app_label):
-        items = []
-        for p in grupo:
-            accion = p.codename.split('_')[0]
-            label = f"{_ACCIONES_ES.get(accion, accion)} {p.content_type.model}"
-            items.append({'pk': p.pk, 'label': label})
-        resultado.append((app_label, items))
-    return resultado
+def _permisos_agrupados(form):
+    seleccionados = {str(valor) for valor in form['permissions'].value() or []}
+    def clave_modulo(permiso):
+        app_label = permiso.content_type.app_label
+        return 'seguridad' if app_label == 'auth' else app_label
+
+    permisos = sorted(form.fields['permissions'].queryset, key=clave_modulo)
+    modulos = []
+    for app_label, grupo in groupby(permisos, key=clave_modulo):
+        por_modelo = {}
+        for permiso in grupo:
+            por_modelo.setdefault(permiso.content_type.model, []).append(permiso)
+
+        modelos = []
+        for clave, permisos_modelo in por_modelo.items():
+            clase = permisos_modelo[0].content_type.model_class()
+            nombre = str(clase._meta.verbose_name) if clase else clave
+            if clave == 'group':
+                nombre = 'rol'
+            items = []
+            # Los permisos estándar siguen el orden de las acciones del formulario.
+            pendientes = {permiso.codename: permiso for permiso in permisos_modelo}
+            for accion, etiqueta in _ACCIONES_ES.items():
+                permiso = pendientes.pop(f'{accion}_{clave}', None)
+                if permiso:
+                    items.append({
+                        'pk': permiso.pk, 'label': etiqueta,
+                        'seleccionado': str(permiso.pk) in seleccionados,
+                    })
+            for permiso in pendientes.values():
+                items.append({
+                    'pk': permiso.pk, 'label': permiso.name.removeprefix('Puede ').capitalize(),
+                    'seleccionado': str(permiso.pk) in seleccionados,
+                })
+            modelos.append({'nombre': nombre, 'permisos': items})
+
+        modulo = MODULOS.get(app_label, {})
+        modulos.append({
+            'nombre': modulo.get('nombre', app_label.capitalize()),
+            'icono': modulo.get('icono', 'bi-shield'),
+            'modelos': sorted(modelos, key=lambda modelo: modelo['nombre'].casefold()),
+        })
+    return modulos
 
 
 @login_required
@@ -140,6 +173,8 @@ def crear_usuario(request):
 @permission_required('seguridad.change_usuario', raise_exception=True)
 def editar_usuario(request, id):
     usuario = get_object_or_404(Usuario, pk=id)
+    if usuario.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied
     if request.method == 'POST':
         form = UsuarioEditarForm(request.POST, instance=usuario, usuario_actual=request.user)
         if form.is_valid():
@@ -166,6 +201,8 @@ def _destino_lista_usuarios(request, usuario=None):
 
 def _cambiar_estado_usuario(request, id, activar):
     usuario = get_object_or_404(Usuario, pk=id)
+    if usuario.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied
     siguiente = _destino_lista_usuarios(request, usuario)
     if activar and Empleado.objects.filter(usuario=usuario, activo=False).exists():
         messages.error(request, 'Primero debes reactivar al empleado asociado a esta cuenta.')
@@ -215,21 +252,15 @@ def lista_roles(request):
 @login_required
 @permission_required('auth.add_group', raise_exception=True)
 def crear_rol(request):
-    if request.method == 'POST':
-        form = RolForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Rol creado correctamente.')
-            return redirect('seguridad:lista_roles')
-        permisos_seleccionados = set(int(pk) for pk in request.POST.getlist('permissions') if pk)
-    else:
-        form = RolForm()
-        permisos_seleccionados = set()
+    form = RolForm(request.POST if request.method == 'POST' else None)
+    if form.is_bound and form.is_valid():
+        form.save()
+        messages.success(request, 'Rol creado correctamente.')
+        return redirect('seguridad:lista_roles')
     return render(request, 'seguridad/form_rol.html', {
         'form': form,
         'accion': 'Crear',
-        'permisos_agrupados': _permisos_agrupados(),
-        'permisos_seleccionados': permisos_seleccionados,
+        'permisos_agrupados': _permisos_agrupados(form),
     })
 
 
@@ -237,22 +268,16 @@ def crear_rol(request):
 @permission_required('auth.change_group', raise_exception=True)
 def editar_rol(request, id):
     rol = get_object_or_404(Group, pk=id)
-    if request.method == 'POST':
-        form = RolForm(request.POST, instance=rol)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Rol actualizado correctamente.')
-            return redirect('seguridad:lista_roles')
-        permisos_seleccionados = set(int(pk) for pk in request.POST.getlist('permissions') if pk)
-    else:
-        form = RolForm(instance=rol)
-        permisos_seleccionados = set(rol.permissions.values_list('pk', flat=True))
+    form = RolForm(request.POST if request.method == 'POST' else None, instance=rol)
+    if form.is_bound and form.is_valid():
+        form.save()
+        messages.success(request, 'Rol actualizado correctamente.')
+        return redirect('seguridad:lista_roles')
     return render(request, 'seguridad/form_rol.html', {
         'form': form,
         'accion': 'Editar',
         'rol': rol,
-        'permisos_agrupados': _permisos_agrupados(),
-        'permisos_seleccionados': permisos_seleccionados,
+        'permisos_agrupados': _permisos_agrupados(form),
     })
 
 
@@ -262,11 +287,16 @@ def editar_rol(request, id):
 @vary_on_headers('X-Requested-With')
 @require_http_methods(['GET', 'HEAD', 'POST'])
 def eliminar_rol(request, id):
-    rol = get_object_or_404(Group, pk=id)
     if request.method == 'POST':
-        rol.delete()
-        messages.success(request, 'Rol eliminado correctamente.')
+        with transaction.atomic():
+            rol = get_object_or_404(Group.objects.select_for_update(), pk=id)
+            if rol.user_set.exists():
+                messages.error(request, 'Quita los usuarios asignados antes de eliminar el rol.')
+            else:
+                rol.delete()
+                messages.success(request, 'Rol eliminado correctamente.')
         return redirect('seguridad:lista_roles')
+    rol = get_object_or_404(Group, pk=id)
     return _render_confirmacion(request, 'seguridad/eliminar_rol.html', {
         'tipo': 'rol', 'rol': rol, 'accion': 'Eliminar',
         'siguiente': reverse('seguridad:lista_roles'),
@@ -305,6 +335,8 @@ def usuarios_rol(request, id):
 @permission_required('seguridad.change_usuario', raise_exception=True)
 def resetear_password(request, id):
     usuario = get_object_or_404(Usuario, pk=id)
+    if usuario.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied
     if request.method == 'POST':
         form = ResetearPasswordForm(request.POST)
         if form.is_valid():
@@ -416,6 +448,8 @@ def _destino_lista_empleados(request, empleado=None):
 def _cambiar_estado_empleado(request, id, activar):
     empleado = get_object_or_404(Empleado.objects.select_related('usuario'), pk=id)
     siguiente = _destino_lista_empleados(request, empleado)
+    if not activar and empleado.usuario and empleado.usuario.is_superuser and not request.user.is_superuser:
+        raise PermissionDenied
     if not activar and empleado.usuario_id == request.user.pk:
         messages.error(request, 'No puedes desactivar al empleado asociado a tu propia cuenta.')
         return redirect(siguiente)
@@ -429,6 +463,8 @@ def _cambiar_estado_empleado(request, id, activar):
             usuario = None
             if not activar and empleado.usuario_id:
                 usuario = Usuario.objects.select_for_update().get(pk=empleado.usuario_id)
+                if usuario.is_superuser and not request.user.is_superuser:
+                    raise PermissionDenied
             cambio = empleado.activo != activar
             if cambio:
                 empleado.activo = activar
@@ -494,6 +530,8 @@ def usuarios_disponibles_empleado(request, id):
     consulta = request.GET.get('q', '').strip()
     consulta_aplicada = consulta if len(consulta) >= 2 else ''
     usuarios = Usuario.objects.filter(empleado__isnull=True)
+    if not request.user.is_superuser:
+        usuarios = usuarios.filter(is_superuser=False)
     if consulta_aplicada:
         usuarios = usuarios.annotate(nombre_completo=Concat('first_name', Value(' '), 'last_name')).filter(
             Q(username__icontains=consulta_aplicada) | Q(nombre_completo__icontains=consulta_aplicada)
@@ -526,7 +564,7 @@ def asociar_usuario_empleado(request, id):
                     error = 'Primero debes reactivar al empleado para asociarle una cuenta.'
                 elif empleado.usuario_id:
                     error = 'Este empleado ya tiene un usuario asociado.'
-                elif usuario is None:
+                elif usuario is None or (usuario.is_superuser and not request.user.is_superuser):
                     error = 'El usuario seleccionado ya no está disponible.'
                 elif Empleado.objects.filter(usuario=usuario).exists():
                     error = 'El usuario seleccionado ya está asociado a otro empleado. Elige otro.'

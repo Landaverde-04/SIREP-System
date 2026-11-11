@@ -530,7 +530,7 @@ class VistasCobroTests(DatosCobro):
     def test_flujo_real_formulario_pedido_cocina_entrega_y_cobro_con_csrf(self):
         self.cajero.user_permissions.add(*Permission.objects.filter(
             content_type__app_label='pedidos',
-            codename__in=['add_pedido', 'view_pedido', 'cambiar_estado_pedido']))
+            codename__in=['add_pedido', 'view_pedido', 'preparar_pedido', 'entregar_pedido']))
         cliente = Client(enforce_csrf_checks=True)
         cliente.force_login(self.cajero)
         nuevo = reverse('pedidos:crear_pedido')
