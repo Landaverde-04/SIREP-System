@@ -3,6 +3,7 @@ import re
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models.functions import Lower
 
 from core.models import ModeloBase
 
@@ -166,3 +167,81 @@ class Cliente(ModeloBase):
         # También se normaliza al guardar desde el admin, la consola o los datos de prueba.
         self.nombre = normalizar_nombre(self.nombre)
         super().save(*args, **kwargs)
+
+
+class CategoriaProducto(ModeloBase):
+    nombre = models.CharField(
+        max_length=60, unique=True,
+        error_messages={'unique': 'Ya existe una categoría con ese nombre.'},
+    )
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'categoría de producto'
+        verbose_name_plural = 'categorías de producto'
+
+    def __str__(self):
+        return self.nombre
+
+
+
+class ProductoQuerySet(models.QuerySet):
+    def habilitados(self):
+        return self.filter(activo=True)
+
+    def ofertables(self):
+        """Productos que pueden pedirse: habilitados y disponibles (RN-06)."""
+        return self.filter(activo=True, disponible=True)
+
+
+
+class Producto(ModeloBase):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField('descripción', blank=True)
+    precio = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        validators=[MinValueValidator(0.01)],
+    )
+    categoria = models.ForeignKey(
+        CategoriaProducto, on_delete=models.PROTECT,
+        related_name='productos', verbose_name='categoría',
+    )
+    disponible = models.BooleanField(
+        default=True,
+        help_text='Se desmarca temporalmente cuando se agotan los ingredientes.',
+    )
+
+    objects = ProductoQuerySet.as_manager()
+
+    class Meta:
+        ordering = ['categoria__nombre', 'nombre']
+        verbose_name = 'producto'
+        verbose_name_plural = 'productos'
+        constraints = [
+            models.UniqueConstraint(
+                Lower('nombre'),
+                name='producto_nombre_unico_ci',
+                violation_error_message='Ya existe un producto con ese nombre.',
+            ),
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+    @property
+    def habilitado(self):
+        return self.activo
+
+    def alternar_disponibilidad(self):
+        """CU-22: disponible <-> no disponible."""
+        self.disponible = not self.disponible
+        self.save(update_fields=['disponible', 'fecha_modificacion'])
+
+    def deshabilitar(self):
+        """CU-23: deja de ofrecerse, sin borrar el historial."""
+        self.activo = False
+        self.save(update_fields=['activo', 'fecha_modificacion'])
+
+    def habilitar(self):
+        self.activo = True
+        self.save(update_fields=['activo', 'fecha_modificacion'])

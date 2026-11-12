@@ -1,0 +1,85 @@
+{% extends "cobro/base_cobro.html" %}
+{% load l10n %}
+
+{% block titulo %}Consumo de mesa {{ atencion.mesa.numero }} - SIREP{% endblock %}
+{% block encabezado %}Consumo de mesa {{ atencion.mesa.numero }}{% endblock %}
+{% block cobro_contenido %}
+<dl class="row g-3 small mb-4">
+    <div class="col-6 col-md-3"><dt class="text-muted fw-normal">Atención</dt><dd class="mb-0">#{{ atencion.pk }}</dd></div>
+    <div class="col-6 col-md-4"><dt class="text-muted fw-normal">Cliente</dt><dd class="mb-0">{{ atencion.cliente.nombre|default:"Cliente sin registro" }}</dd></div>
+    <div class="col-12 col-md-5"><dt class="text-muted fw-normal">Ingreso</dt><dd class="mb-0">{{ atencion.fecha_hora_ingreso|date:"d/m/Y H:i" }}</dd></div>
+</dl>
+
+{% if not atencion.esta_abierta %}<div class="alert alert-secondary">Esta atención está cerrada. No admite nuevos cobros.</div>{% endif %}
+{% if error_consumo %}<div class="alert alert-danger" role="alert">{{ error_consumo }}</div>{% endif %}
+
+{% if form.errors %}
+<div class="alert alert-danger" role="alert">
+    <strong>No se pudo registrar el cobro.</strong> Revise los datos indicados.
+    {% for error in form.non_field_errors %}<div class="mt-1">{{ error }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <section class="card shadow-sm border-0">
+            <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center gap-2">
+                <h2 class="h6 fw-semibold mb-0">Productos solicitados</h2>
+                <a href="{% url 'cobro:detalle_consumo' atencion.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> Actualizar</a>
+            </div>
+            {% if consumo.lineas_solicitadas %}
+            <div class="table-responsive">
+                <table class="table align-middle cobro-tabla mb-0">
+                    <caption class="visually-hidden">Productos solicitados de la atención {{ atencion.pk }}, con estados y precios históricos. Se excluyen cancelados.</caption>
+                    <thead class="table-light"><tr><th scope="col">Producto</th><th scope="col" class="text-end">Cant.</th><th scope="col" class="text-end">Precio</th><th scope="col" class="text-end">Subtotal</th><th scope="col" class="d-none d-md-table-cell">Estado</th></tr></thead>
+                    <tbody>{% for linea in consumo.lineas_solicitadas %}<tr data-estado="{{ linea.estado_pedido }}"{% if not linea.entregado %} class="cobro-linea-en-curso"{% endif %}>
+                        <td><div class="fw-medium">{{ linea.nombre_producto }}</div><div class="small text-muted">Pedido #{{ linea.origen.pedido_id }}</div><div class="d-md-none mt-1">{% include "cobro/parciales/estado_pedido.html" %}</div></td>
+                        <td class="text-end">{{ linea.cantidad }}</td><td class="text-end text-nowrap">$ {{ linea.precio_unitario|floatformat:2 }}</td><td class="text-end text-nowrap fw-medium">$ {{ linea.subtotal|floatformat:2 }}</td>
+                        <td class="d-none d-md-table-cell">{% include "cobro/parciales/estado_pedido.html" %}</td>
+                    </tr>{% endfor %}</tbody>
+                </table>
+            </div>
+            {% elif error_consumo %}
+            <div class="card-body p-4 text-muted">El detalle y el total no están disponibles hasta corregir los datos del pedido.</div>
+            {% else %}
+            <div class="card-body text-center py-5"><h3 class="h6">No hay productos solicitados</h3><p class="text-muted small mb-0">Los productos de pedidos no cancelados aparecerán aquí.</p></div>
+            {% endif %}
+        </section>
+        <p class="text-muted small mt-3">Consultar el consumo no cierra la atención. Los pedidos cancelados están excluidos.</p>
+    </div>
+    <div class="col-lg-4">
+        <section class="card shadow-sm border-0 cobro-resumen">
+            <div class="card-body p-4">
+                <h2 class="h6 text-muted mb-2">Total entregado</h2>
+                {% if error_consumo %}<div class="h4 mb-3">No disponible</div>{% else %}<div id="total-entregado" class="display-6 fw-semibold cobro-dinero mb-2" data-importe="{{ consumo.total|unlocalize }}">$ {{ consumo.total|floatformat:2 }}</div>{% endif %}
+                {% if consumo and not consumo.lineas %}<p class="small text-muted mb-3">No hay consumo entregado. No se puede registrar un pago todavía.</p>{% endif %}
+                <div class="bg-light border rounded p-3 my-3">
+                    <h3 class="h6 mb-2">Total estimado de la atención</h3>
+                    {% if error_consumo %}<div class="h5">No disponible</div>{% else %}<div id="total-estimado" class="h4 cobro-dinero" data-importe="{{ consumo.total_estimado|unlocalize }}">$ {{ consumo.total_estimado|floatformat:2 }}</div>{% endif %}
+                    <p class="small text-muted mb-0">Informativo y provisional. Incluye lo solicitado sin cancelar y no autoriza el cobro.</p>
+                </div>
+                {% if consumo.pendientes %}
+                <div class="alert alert-warning small py-2 px-3" role="alert" id="aviso-pendientes">
+                    <p class="mb-1">Cobro habilitado hasta que se entregue el pedido al cliente.</p>
+                    <ul class="mb-0 ps-3">{% for pedido in consumo.pendientes %}<li>Pedido #{{ pedido.pk }}: {{ pedido.get_estado_display }}</li>{% endfor %}</ul>
+                </div>
+                {% endif %}
+                {% if atencion.esta_abierta and consumo.puede_cobrarse and perms.cobro.add_cobro %}
+                <form method="post" action="{% url 'cobro:registrar_cobro' atencion.pk %}" id="form-cobro" data-total="{{ consumo.total|unlocalize }}">
+                    {% csrf_token %}
+                    <div class="mb-3"><label for="{{ form.forma_pago.id_for_label }}" class="form-label small fw-semibold">{{ form.forma_pago.label }}</label>{{ form.forma_pago }}{% for error in form.forma_pago.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                    <div class="mb-3"><label for="{{ form.monto_recibido.id_for_label }}" class="form-label small fw-semibold">{{ form.monto_recibido.label }}</label><div class="input-group"><span class="input-group-text">$</span>{{ form.monto_recibido }}</div>{% for error in form.monto_recibido.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}<div id="ayuda-monto" class="form-text">Efectivo: admite cambio. Otros medios: monto exacto.</div></div>
+                    <div class="bg-light border rounded p-3 mb-3 d-flex justify-content-between"><span>Cambio estimado</span><strong id="cambio-estimado" aria-live="polite">—</strong></div>
+                    <div class="form-check mb-3">{{ form.confirmar }}<label class="form-check-label small" for="{{ form.confirmar.id_for_label }}">{{ form.confirmar.label }}</label>{% for error in form.confirmar.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>
+                    <button type="submit" class="btn btn-dark w-100" id="confirmar-cobro"><i class="bi bi-check2-circle me-1" aria-hidden="true"></i> Registrar cobro y cerrar</button>
+                    <p class="small text-muted mt-3 mb-0">La atención se cerrará al confirmar el pago. Este registro no procesa cargos electrónicos.</p>
+                </form>
+                {% elif not perms.cobro.add_cobro %}<div class="alert alert-light border small mb-0">Su usuario tiene acceso de consulta. Se requiere permiso de registro para cobrar.</div>
+                {% else %}
+                {% if not consumo.pendientes %}<p class="small text-muted" id="estado-cobro">El registro estará disponible cuando exista consumo válido y no haya pedidos en curso.</p>{% endif %}
+                <button type="button" class="btn btn-dark w-100" id="confirmar-cobro-bloqueado" disabled aria-describedby="{% if consumo.pendientes %}aviso-pendientes{% else %}estado-cobro{% endif %}">Registrar cobro y cerrar</button>{% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

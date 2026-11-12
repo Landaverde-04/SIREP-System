@@ -49,16 +49,10 @@
                         </a>
                         {% endif %}
                         {% if perms.auth.delete_group %}
-                        <button type="button"
-                                class="btn btn-sm btn-outline-danger"
-                                data-accion="eliminar"
-                                data-tipo="rol"
-                                data-nombre="{{ rol.name }}"
-                                data-url="{% url 'seguridad:eliminar_rol' rol.id %}"
-                                data-usuarios="{{ rol.total_usuarios }}"
-                                title="Eliminar">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                        <a href="{% url 'seguridad:eliminar_rol' rol.id %}" data-confirmar
+                           class="btn btn-sm btn-outline-danger" title="Eliminar rol {{ rol.name }}" aria-label="Eliminar rol {{ rol.name }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
+                        </a>
                         {% endif %}
                     </td>
                 </tr>

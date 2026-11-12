@@ -1,0 +1,26 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Cobros - SIREP{% endblock %}
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'cobro/css/cobro.css' %}">
+{% endblock %}
+
+{% block contenido %}
+<div class="cobro-modulo mx-auto">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <h1 class="h4 fw-semibold mb-0">{% block encabezado %}Cobros{% endblock %}</h1>
+        </div>
+        <nav class="d-flex gap-2" aria-label="Secciones de cobro">
+            <a class="btn btn-sm {% if request.resolver_match.url_name == 'lista_atenciones' %}btn-dark{% else %}btn-outline-secondary{% endif %}" href="{% url 'cobro:lista_atenciones' %}"><i class="bi bi-table me-1" aria-hidden="true"></i> Atenciones</a>
+            <a class="btn btn-sm {% if request.resolver_match.url_name == 'historial' %}btn-dark{% else %}btn-outline-secondary{% endif %}" href="{% url 'cobro:historial' %}"><i class="bi bi-clock-history me-1" aria-hidden="true"></i> Historial</a>
+        </nav>
+    </div>
+    {% block cobro_contenido %}{% endblock %}
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'cobro/js/cobro.js' %}" defer></script>
+{% endblock %}
