@@ -1,12 +1,26 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group
+from django.db import DatabaseError, connection
 from django.db.models import Count
+from django.http import HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_safe
 
 from .navegacion import acceso_modulo_requerido, modulos_disponibles
+
+
+@never_cache
+@require_safe
+def estado_servicio(request):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT 1')
+    except DatabaseError:
+        return HttpResponse('No disponible', status=503, content_type='text/plain')
+    return HttpResponse('OK', content_type='text/plain')
 
 
 @login_required

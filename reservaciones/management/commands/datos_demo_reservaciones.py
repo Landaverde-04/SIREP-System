@@ -29,12 +29,21 @@ CLIENTES = [
 class Command(BaseCommand):
     help = 'Carga mesas, clientes y el rol Anfitrión para probar el módulo de reservaciones.'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--minimo', action='store_true', help='Carga dos mesas y dos clientes.')
+
     @transaction.atomic
     def handle(self, *args, **opciones):
+        mesas_demo = MESAS
+        clientes_demo = CLIENTES
+        if opciones['minimo']:
+            mesas_demo = [mesa for mesa in MESAS if mesa[0] in (1, 3)]
+            clientes_demo = CLIENTES[:2]
+
         mesas = sum(Mesa.objects.get_or_create(numero=n, defaults={'capacidad': c, 'ubicacion': u})[1]
-                    for n, c, u in MESAS)
+                    for n, c, u in mesas_demo)
         clientes = sum(Cliente.objects.get_or_create(telefono=t, defaults={'nombre': n})[1]
-                       for n, t in CLIENTES)
+                       for n, t in clientes_demo)
         for nombre_rol in ('Anfitrión', 'Gerente'):
             rol, creado = Group.objects.get_or_create(name=nombre_rol)
             if creado:

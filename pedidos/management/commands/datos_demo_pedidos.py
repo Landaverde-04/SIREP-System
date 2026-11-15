@@ -26,19 +26,29 @@ MENU = {
     'Bebidas': [('Refresco natural', '1.75'), ('Limonada', '2.00'), ('Café', '1.50')],
     'Postres': [('Tres leches', '3.25')],
 }
+PRODUCTOS_MINIMOS = {'Sopa del día', 'Pollo a la plancha'}
 
 
 class Command(BaseCommand):
     help = 'Carga el menú y los roles Mesero y Encargado de cocina para probar el módulo de pedidos.'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--minimo', action='store_true', help='Carga dos productos en categorías distintas.')
+
     @transaction.atomic
     def handle(self, *args, **opciones):
         productos = 0
         for nombre_categoria, items in MENU.items():
+            if opciones['minimo']:
+                items = [(nombre, precio) for nombre, precio in items if nombre in PRODUCTOS_MINIMOS]
+            if not items:
+                continue
             categoria, _ = CategoriaProducto.objects.get_or_create(nombre=nombre_categoria)
             for nombre, precio in items:
                 productos += Producto.objects.get_or_create(
-                    nombre=nombre, defaults={'categoria': categoria, 'precio': Decimal(precio)})[1]
+                    nombre__iexact=nombre,
+                    defaults={'nombre': nombre, 'categoria': categoria, 'precio': Decimal(precio)},
+                )[1]
 
         for nombre_rol in ('Mesero', 'Encargado de cocina'):
             rol, creado = Group.objects.get_or_create(name=nombre_rol)
