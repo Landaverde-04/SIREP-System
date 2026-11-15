@@ -10,8 +10,23 @@ environ.Env.read_env(BASE_DIR / '.env')
 
 # Seguridad
 SECRET_KEY = env('SECRET_KEY')
-DEBUG = env.bool('DEBUG', default=False)
+EN_RENDER = env.bool('RENDER', default=False)
+DEBUG = False if EN_RENDER else env.bool('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+if EN_RENDER:
+    render_host = env('RENDER_EXTERNAL_HOSTNAME')
+    ALLOWED_HOSTS = [render_host, *ALLOWED_HOSTS]
+    CSRF_TRUSTED_ORIGINS = [
+        f'https://{render_host}',
+        *env.list('CSRF_TRUSTED_ORIGINS', default=[]),
+    ]
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r'^healthz/$']
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
 
 
 # Application definition
@@ -42,6 +57,8 @@ MIDDLEWARE = [
     'seguridad.middleware.ForzarCambioPasswordMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if EN_RENDER:
+    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
 
 ROOT_URLCONF = 'sirep.urls'
 
@@ -55,6 +72,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.navegacion',
             ],
         },
     },
@@ -64,16 +82,19 @@ WSGI_APPLICATION = 'sirep.wsgi.application'
 
 
 # Base de datos
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env.int('DB_PORT'),
+if EN_RENDER:
+    DATABASES = {'default': env.db('DATABASE_URL')}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': env('DB_NAME'),
+            'USER': env('DB_USER'),
+            'PASSWORD': env('DB_PASSWORD'),
+            'HOST': env('DB_HOST'),
+            'PORT': env.int('DB_PORT'),
+        }
     }
-}
 
 
 # Validacion de contrasenas
@@ -105,6 +126,13 @@ USE_TZ = True
 
 # Archivos estaticos
 STATIC_URL = 'static/'
+if EN_RENDER:
+    STATIC_URL = '/static/'
+    STATIC_ROOT = BASE_DIR / 'staticfiles'
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
 
 # Modelo de usuario personalizado
 AUTH_USER_MODEL = 'seguridad.Usuario'

@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+{% load reservaciones_extras %}
+
+{% block titulo %}Reservación {{ reservacion.codigo }} - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">Reservación <span class="font-monospace">{{ reservacion.codigo }}</span></h4>
+    <a href="{% url 'reservaciones:lista_reservaciones' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 640px;">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text-muted small">Estado</span>
+            {% include "reservaciones/parciales/estado.html" with estado=reservacion.estado %}
+        </div>
+        <dl class="row mb-0">
+            <dt class="col-sm-5 text-muted fw-normal">Cliente</dt>
+            <dd class="col-sm-7">{{ reservacion.cliente.nombre }}<div class="small text-muted">{{ reservacion.cliente.telefono }}</div></dd>
+
+            <dt class="col-sm-5 text-muted fw-normal">Fecha</dt>
+            <dd class="col-sm-7">{{ reservacion.fecha_hora_inicio|date:"l d/m/Y" }}</dd>
+
+            <dt class="col-sm-5 text-muted fw-normal">Horario</dt>
+            <dd class="col-sm-7">{{ reservacion.fecha_hora_inicio|time:"H:i" }} a {{ reservacion.fecha_hora_fin|time:"H:i" }}
+                <span class="text-muted small">({{ reservacion.duracion_estimada|duracion }})</span></dd>
+
+            <dt class="col-sm-5 text-muted fw-normal">Personas</dt>
+            <dd class="col-sm-7">{{ reservacion.cantidad_personas }}</dd>
+
+            <dt class="col-sm-5 text-muted fw-normal">Mesa</dt>
+            <dd class="col-sm-7">Mesa {{ reservacion.mesa.numero }} · {{ reservacion.mesa.capacidad }} personas{% if reservacion.mesa.ubicacion %} · {{ reservacion.mesa.ubicacion }}{% endif %}</dd>
+
+            <dt class="col-sm-5 text-muted fw-normal">Registrada</dt>
+            <dd class="col-sm-7">{{ reservacion.fecha_creacion|date:"d/m/Y H:i" }}{% if reservacion.registrada_por %} por {{ reservacion.registrada_por.username }}{% endif %}</dd>
+
+            {% if reservacion.estado == 'CANCELADA' %}
+            <dt class="col-sm-5 text-muted fw-normal">Cancelada</dt>
+            <dd class="col-sm-7">{{ reservacion.fecha_hora_cancelacion|date:"d/m/Y H:i" }}</dd>
+            <dt class="col-sm-5 text-muted fw-normal">Motivo</dt>
+            <dd class="col-sm-7">{{ reservacion.motivo_cancelacion|default:"No se indicó" }}</dd>
+            {% endif %}
+
+            {% if atencion %}
+            <dt class="col-sm-5 text-muted fw-normal">Ingreso</dt>
+            <dd class="col-sm-7">{{ atencion.fecha_hora_ingreso|date:"d/m/Y H:i" }} · mesa {{ atencion.mesa.numero }} · {{ atencion.cantidad_personas }} personas
+                <div class="small text-muted">Atención {{ atencion.get_estado_display|lower }}</div></dd>
+            {% endif %}
+        </dl>
+
+        {% if reservacion.esta_programada %}
+        <div class="d-flex flex-wrap justify-content-end gap-2 border-top pt-3 mt-3">
+            {% if perms.reservaciones.cancelar_reservacion %}
+            <a href="{% url 'reservaciones:cancelar_reservacion' reservacion.codigo %}" class="btn btn-outline-danger btn-sm"><i class="bi bi-x-circle"></i> Cancelar reservación</a>
+            {% endif %}
+            {% if perms.reservaciones.change_reservacion %}
+            <a href="{% url 'reservaciones:modificar_reservacion' reservacion.codigo %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Modificar</a>
+            {% endif %}
+            {% if es_de_hoy and perms.reservaciones.add_atencion %}
+            <a href="{% url 'reservaciones:ingreso_con_reservacion' reservacion.codigo %}" class="btn btn-primary btn-sm"><i class="bi bi-door-open"></i> Registrar ingreso</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

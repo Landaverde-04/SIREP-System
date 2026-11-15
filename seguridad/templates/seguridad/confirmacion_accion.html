@@ -1,0 +1,29 @@
+<section data-confirmacion-seguridad data-titulo="{{ accion }} {{ tipo }}">
+    <div class="confirmacion-cuerpo">
+        <div class="confirmacion-identidad">
+            <span class="confirmacion-icono {% if activar %}confirmacion-positiva{% endif %}"><i class="bi {% if tipo == 'rol' %}bi-shield-lock{% elif tipo == 'empleado' %}bi-person-badge{% else %}bi-person-circle{% endif %}" aria-hidden="true"></i></span>
+            <div>
+                <strong>{% if tipo == 'usuario' %}{{ usuario.username }}{% elif tipo == 'empleado' %}{{ empleado }}{% else %}{{ rol.name }}{% endif %}</strong>
+                <small>{% if tipo == 'empleado' %}{{ empleado.codigo }} · {{ empleado.cargo }}{% elif tipo == 'usuario' %}Cuenta de acceso al sistema{% else %}Rol del sistema{% endif %}</small>
+            </div>
+        </div>
+        <p>¿Deseas {{ accion|lower }} {% if tipo == 'rol' %}este rol{% elif tipo == 'usuario' %}esta cuenta de usuario{% else %}a este empleado{% endif %}?</p>
+        {% if tipo == 'rol' %}
+            <p class="text-muted small">Esta acción no se puede deshacer.</p>
+            {% if total_usuarios %}<div class="alert alert-warning small">Este rol tiene {{ total_usuarios }} usuario{{ total_usuarios|pluralize }} asignado{{ total_usuarios|pluralize }}. Quita las asignaciones antes de eliminar el rol.</div>{% endif %}
+        {% elif tipo == 'usuario' %}
+            <p class="text-muted small">{% if activar %}Podrá iniciar sesión con sus credenciales y permisos actuales.{% else %}No podrá iniciar sesión. Se conservarán sus datos, roles e historial para poder reactivarlo después.{% endif %}</p>
+        {% else %}
+            <p class="text-muted small">{% if activar %}Volverá a aparecer en el listado de empleados activados.{% else %}Pasará al listado de empleados desactivados y podrás reactivarlo después.{% endif %} Sus datos e historial se conservarán.</p>
+            {% if empleado.usuario_id %}<div class="alert alert-warning small">{% if activar %}La cuenta <strong>{{ empleado.usuario.username }}</strong> conservará su estado actual. Reactivarla será una acción independiente.{% else %}También se desactivará la cuenta <strong>{{ empleado.usuario.username }}</strong>. Se conservará la asociación.{% endif %}</div>{% endif %}
+        {% endif %}
+    </div>
+    <form action="{{ form_action }}" method="post" class="confirmacion-pie" data-form-confirmacion>
+        {% csrf_token %}
+        <input type="hidden" name="siguiente" value="{{ siguiente }}">
+        <button type="button" class="btn btn-outline-secondary" data-cerrar-confirmacion>Cancelar</button>
+        {% if tipo != 'rol' or not total_usuarios %}
+            <button type="submit" class="btn {% if activar %}btn-success{% else %}btn-danger{% endif %}">Sí, {{ accion|lower }}</button>
+        {% endif %}
+    </form>
+</section>

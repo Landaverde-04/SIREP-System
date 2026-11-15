@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 var colapsado = sidebar.classList.toggle('sidebar-collapsed');
                 localStorage.setItem('sidebar-colapsado', colapsado ? '1' : '0');
+                btnToggle.setAttribute('aria-expanded', String(!colapsado));
             }
         });
     }
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Restaurar estado colapsado en escritorio
     if (sidebar && !esMobile() && localStorage.getItem('sidebar-colapsado') === '1') {
         sidebar.classList.add('sidebar-collapsed');
+        if (btnToggle) btnToggle.setAttribute('aria-expanded', 'false');
     }
 
     /* ── Toggle visibilidad de contraseña ── */

@@ -1,0 +1,62 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Ingreso sin reservación - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">Cliente sin reservación</h4>
+    <a href="{% url 'reservaciones:panel_ingresos' %}" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 820px;">
+    <div class="card-body p-4">
+        {% include "reservaciones/parciales/errores_generales.html" %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <h6 class="paso-titulo">1. Personas</h6>
+            <div class="row align-items-end">
+                <div class="col-sm-6">{% include "reservaciones/parciales/campo.html" with campo=form.cantidad_personas %}</div>
+                <div class="col-sm-6 mb-3">
+                    <button type="submit" name="accion" value="consultar" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-search"></i> Ver mesas libres ahora
+                    </button>
+                </div>
+            </div>
+            <p class="small text-muted">Se consideran libres las mesas sin atención en curso ni reservación programada en las próximas dos horas.</p>
+
+            {% if mesas is not None %}
+                <h6 class="paso-titulo mt-3">2. Mesa</h6>
+                {% include "reservaciones/parciales/mesas.html" with seleccion=form.mesa.value|stringformat:"s" campo=form.mesa mensaje_sin_mesas="No hay mesas libres con capacidad suficiente en este momento. No se puede registrar el ingreso." %}
+
+                {% if mesas %}
+                    <h6 class="paso-titulo mt-4">3. Cliente</h6>
+                    {% include "reservaciones/parciales/selector_cliente.html" with campo=form.cliente opcional=True %}
+
+                    <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
+                        <a href="{% url 'reservaciones:panel_ingresos' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+                        <button type="submit" name="accion" value="confirmar" class="btn btn-primary btn-sm">
+                            <i class="bi bi-door-open"></i> Confirmar ingreso
+                        </button>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% include "reservaciones/parciales/modal_cliente.html" %}
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'reservaciones/js/reservaciones.js' %}"></script>
+{% endblock %}

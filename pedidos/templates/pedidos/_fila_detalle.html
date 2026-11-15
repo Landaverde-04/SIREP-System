@@ -1,0 +1,21 @@
+<tr class="detalle-fila{% if form.DELETE.value %} d-none{% endif %}">
+    <td>
+        {% for oculto in form.hidden_fields %}{{ oculto }}{% endfor %}
+        {{ form.producto }}
+        {% for error in form.producto.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </td>
+    <td style="width: 120px;">
+        {{ form.cantidad }}
+        {% for error in form.cantidad.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </td>
+    <td>
+        {{ form.nota }}
+        {% for error in form.nota.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+    </td>
+    <td class="text-end" style="width: 56px;">
+        <span class="d-none">{{ form.DELETE }}</span>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-quitar-detalle" title="Quitar producto">
+            <i class="bi bi-trash"></i>
+        </button>
+    </td>
+</tr>

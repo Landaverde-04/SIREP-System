@@ -1,0 +1,54 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}{{ titulo }} - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">{{ titulo }}</h4>
+    <a href="{% if mesa %}{% url 'administracion:detalle_mesa' mesa.pk %}{% else %}{% url 'administracion:lista_mesas' %}{% endif %}"
+       class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2"><i class="bi bi-arrow-left"></i> Volver</a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 760px;">
+    <div class="card-body p-4">
+        {% if form.non_field_errors %}<div class="alert alert-danger">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+        <div class="row g-4 align-items-center">
+            <div class="col-md-7">
+                <form method="post" novalidate id="form-mesa">
+                    {% csrf_token %}
+                    {% include "administracion/parciales/campo.html" with campo=form.numero %}
+                    {% include "administracion/parciales/campo.html" with campo=form.capacidad %}
+                    {% include "administracion/parciales/campo.html" with campo=form.ubicacion %}
+                    <datalist id="ubicaciones">{% for u in ubicaciones %}<option value="{{ u }}">{% endfor %}</datalist>
+                </form>
+            </div>
+            <div class="col-md-5">
+                <div class="mesa-tile estado-libre py-4" id="vista-mesa">
+                    <div class="mesa-dibujo">
+                        <div class="mesa-sillas" data-lado="arriba"></div>
+                        <div class="mesa-tablero">?</div>
+                        <div class="mesa-sillas" data-lado="abajo"></div>
+                    </div>
+                    <span class="mesa-info" id="vista-mesa-texto"></span>
+                    <span class="mesa-info small">Vista previa</span>
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
+            <a href="{% if mesa %}{% url 'administracion:detalle_mesa' mesa.pk %}{% else %}{% url 'administracion:lista_mesas' %}{% endif %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+            <button type="submit" form="form-mesa" class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> {% if mesa %}Guardar cambios{% else %}Registrar mesa{% endif %}</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'administracion/js/formularios.js' %}"></script>
+{% endblock %}

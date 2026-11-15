@@ -1,0 +1,243 @@
+/* Módulo de reservaciones */
+
+.paso-titulo {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin-bottom: 0.75rem;
+}
+
+.mesa-opcion {
+    padding: 0.6rem 0.75rem;
+    line-height: 1.25;
+}
+
+.btn-check:checked + .mesa-opcion small {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+#cliente-resultados .list-group-item {
+    font-size: 0.9rem;
+}
+
+/* ── Dibujo de mesa (tablero con sillas) ───────────────────────────── */
+.mesa-dibujo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.mesa-sillas {
+    display: flex;
+    gap: 6px;
+    min-height: 8px;
+}
+.mesa-sillas span {
+    width: 18px;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--silla, #ced4da);
+    transition: background-color .2s;
+}
+.mesa-tablero {
+    height: 44px;
+    border-radius: 12px;
+    background: var(--tablero, #6c757d);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15);
+    transition: background-color .2s, width .2s;
+}
+.mesa-tablero small {
+    font-size: .65rem;
+    font-weight: 600;
+    opacity: .85;
+}
+
+/* Colores por estado */
+.estado-libre       { --tablero: #198754; --silla: #a3cfbb; --borde: #75b798; --fondo: #f3faf6; }
+.estado-reservada   { --tablero: #0d6efd; --silla: #9ec5fe; --borde: #6ea8fe; --fondo: #f3f7ff; }
+.estado-ocupada     { --tablero: #e8590c; --silla: #ffc9a8; --borde: #f8a37a; --fondo: #fff6f0; }
+.estado-pequena     { --tablero: #adb5bd; --silla: #dee2e6; --borde: #ced4da; --fondo: #f8f9fa; }
+.estado-deshabilitada { --tablero: #ced4da; --silla: #e9ecef; --borde: #dee2e6; --fondo: #f8f9fa; }
+
+/* ── Tarjeta de mesa (mapa y gestión) ──────────────────────────────── */
+.mesa-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding: 1rem .75rem .85rem;
+    background: var(--fondo, #fff);
+    border: 1.5px solid var(--borde, #dee2e6);
+    border-radius: 14px;
+    color: inherit;
+    text-decoration: none;
+    text-align: center;
+    height: 100%;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+a.mesa-tile:hover, a.mesa-tile:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .08);
+    color: inherit;
+}
+.mesa-tile .mesa-estado {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--tablero);
+}
+.mesa-tile .mesa-info {
+    font-size: .8rem;
+    color: #6c757d;
+    line-height: 1.3;
+}
+.mesa-tile .mesa-accion {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--tablero);
+}
+.estado-pequena.mesa-tile, .estado-deshabilitada.mesa-tile { opacity: .75; }
+.mesa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: .85rem;
+}
+.zona-titulo {
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #6c757d;
+    margin: 1.25rem 0 .6rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.zona-titulo::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Filtros por estado */
+.filtro-estado {
+    border: 1.5px solid var(--borde);
+    background: #fff;
+    color: var(--tablero);
+    border-radius: 999px;
+    padding: .3rem .85rem;
+    font-size: .85rem;
+    font-weight: 600;
+}
+.filtro-estado .punto {
+    display: inline-block;
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+    background: var(--tablero);
+    margin-right: .35rem;
+}
+.filtro-estado.activo, .filtro-estado:hover {
+    background: var(--tablero);
+    color: #fff;
+}
+.filtro-estado.activo .punto, .filtro-estado:hover .punto { background: #fff; }
+.filtro-todos { --tablero: #212529; --borde: #adb5bd; }
+
+/* ── Agenda del día ────────────────────────────────────────────────── */
+.agenda-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.agenda-scroll .agenda { min-width: 720px; }
+.agenda {
+    --ancho-etiqueta: 92px;
+    position: relative;
+    font-size: .78rem;
+}
+.agenda-fila {
+    display: flex;
+    align-items: center;
+    min-height: 34px;
+    border-bottom: 1px solid #f1f3f5;
+}
+.agenda-etiqueta {
+    width: var(--ancho-etiqueta);
+    flex-shrink: 0;
+    padding-right: .5rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.agenda-etiqueta small { font-weight: 400; color: #6c757d; }
+.agenda-pista {
+    position: relative;
+    flex: 1;
+    height: 26px;
+    background-image: linear-gradient(to right, #e9ecef 1px, transparent 1px);
+    background-size: var(--paso-hora) 100%;
+}
+.agenda-horas {
+    position: relative;
+    flex: 1;
+    height: 18px;
+    color: #6c757d;
+}
+.agenda-horas span {
+    position: absolute;
+    transform: translateX(-50%);
+    font-size: .7rem;
+}
+.agenda-bloque {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    border-radius: 6px;
+    padding: 0 .4rem;
+    color: #fff;
+    font-weight: 600;
+    font-size: .7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    z-index: 2;
+}
+.agenda-bloque:hover { color: #fff; filter: brightness(1.1); }
+.agenda-bloque.tipo-reservacion { background: #0d6efd; }
+.agenda-bloque.tipo-atencion { background: #e8590c; }
+.agenda-bloque.tipo-cerrada { background: #adb5bd; }
+.agenda-periodo {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: rgba(25, 135, 84, .12);
+    border-left: 2px solid #198754;
+    border-right: 2px solid #198754;
+    z-index: 1;
+    pointer-events: none;
+}
+.agenda-ahora {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dc3545;
+    z-index: 3;
+    pointer-events: none;
+}
+@media (max-width: 575.98px) {
+    .agenda { --ancho-etiqueta: 62px; }
+    .mesa-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}

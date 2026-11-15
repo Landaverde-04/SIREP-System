@@ -1,11 +1,35 @@
-{# Esta pagina hereda toda la estructura de base.html (html, head, navbar, footer) #}
 {% extends "core/base.html" %}
-
-{# Sobreescribe el titulo del <title> en el <head> #}
 {% block titulo %}Inicio - SIREP{% endblock %}
-
-{# Todo lo que va aqui aparece dentro del <main> de base.html #}
 {% block contenido %}
-<h1>Bienvenido a SIREP</h1>
-<p>Sistema de Reservaciones y Pedidos para un Restaurante.</p>
+<section class="inicio-bienvenida">
+    <div><span class="etiqueta-seccion">EL SERVICIO COMIENZA AQUÍ</span><h1>Hola, {{ user.get_short_name|default:user.username }}<span class="saludo-punto">.</span></h1><p>Un vistazo a tu restaurante. Todo listo para un buen servicio.</p></div>
+    <div class="inicio-fecha"><i class="bi bi-calendar3" aria-hidden="true"></i><div><strong>{{ hoy|date:"d" }}</strong><span>{{ hoy|date:"F Y" }}</span></div></div>
+</section>
+{% if indicadores %}
+<div class="titulo-seccion mt-4"><div><h2>Resumen de hoy</h2><p>Información actual del restaurante y tu equipo.</p></div><span class="estado-actual"><span></span>Datos del sistema</span></div>
+<div class="indicadores-cuadricula">
+    {% for indicador in indicadores %}
+    <a href="{{ indicador.url }}" class="indicador-tarjeta acento-{{ indicador.color }}"><div class="d-flex justify-content-between align-items-center"><span class="indicador-nombre">{{ indicador.nombre }}</span><span class="indicador-icono"><i class="bi {{ indicador.icono }}" aria-hidden="true"></i></span></div><strong class="indicador-valor">{{ indicador.valor }}</strong><span class="indicador-detalle">{{ indicador.detalle }}</span></a>
+    {% endfor %}
+</div>
+{% endif %}
+{% if accesos_rapidos %}
+<section class="accesos-rapidos"><span class="fw-semibold small">Accesos rápidos</span><div>{% for acceso in accesos_rapidos %}<a href="{{ acceso.url }}"><i class="bi {{ acceso.icono }}" aria-hidden="true"></i>{{ acceso.nombre }}<i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>{% endfor %}</div></section>
+{% endif %}
+{% if agenda is not None or estados_pedidos is not None %}
+<div class="row g-4 mt-0 mb-4">
+    {% if agenda is not None %}
+    <section class="{% if estados_pedidos is not None %}col-lg-7{% else %}col-12{% endif %}"><div class="panel-dashboard h-100"><div class="panel-encabezado"><div><h2>Agenda de hoy</h2><p>Reservaciones programadas</p></div><a href="{% url 'reservaciones:lista_reservaciones' %}">Ver todas <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div>
+        {% for reserva in agenda %}<a href="{% url 'reservaciones:detalle_reservacion' reserva.codigo %}" class="agenda-fila"><time>{{ reserva.fecha_hora_inicio|date:"H:i" }}</time><div><strong>{{ reserva.cliente.nombre }}</strong><small>Mesa {{ reserva.mesa.numero }} · {{ reserva.cantidad_personas }} personas</small></div><span class="agenda-estado">Programada</span></a>{% empty %}<div class="panel-vacio"><i class="bi bi-calendar2-check" aria-hidden="true"></i><strong>Sin reservaciones programadas para hoy</strong><p>Las próximas reservaciones del día aparecerán aquí.</p></div>{% endfor %}
+    </div></section>
+    {% endif %}
+    {% if estados_pedidos is not None %}
+    <section class="{% if agenda is not None %}col-lg-5{% else %}col-12{% endif %}"><div class="panel-dashboard h-100"><div class="panel-encabezado"><div><h2>El pulso de cocina</h2><p>Distribución de los pedidos en curso</p></div><i class="bi bi-fire text-muted" aria-hidden="true"></i></div><div class="p-4">{% for estado in estados_pedidos %}<div class="estado-pedido acento-{{ estado.color }}"><div><span>{{ estado.nombre }}</span><strong>{{ estado.total }}</strong></div><div class="estado-pedido-barra" role="img" aria-label="{{ estado.nombre }}: {{ estado.total }} pedidos, {{ estado.porcentaje }} por ciento del total"><span style="width: {{ estado.porcentaje }}%"></span></div></div>{% endfor %}<a class="enlace-suave" href="{% url 'pedidos:cocina' %}">Abrir tablero de cocina <i class="bi bi-arrow-right" aria-hidden="true"></i></a></div></div></section>
+    {% endif %}
+</div>
+{% endif %}
+<div class="titulo-seccion"><div><h2>Tus módulos</h2><p>Elige el área en la que vas a trabajar.</p></div></div>
+<div class="modulos-inicio">
+    {% for modulo in modulos_navegacion %}<a href="{{ modulo.url }}" class="modulo-mini acento-{{ modulo.color }}"><span class="acceso-icono"><i class="bi {{ modulo.icono }}" aria-hidden="true"></i></span><div><h3>{{ modulo.nombre }}</h3><p>{{ modulo.accesos|length }} acceso{{ modulo.accesos|length|pluralize }} disponible{{ modulo.accesos|length|pluralize }}</p></div><i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>{% empty %}<div class="panel-dashboard p-4"><h3 class="h6">Tu cuenta está lista</h3><p class="text-muted small mb-2">Solicita al administrador los permisos de los módulos que necesitas utilizar.</p><a href="{% url 'seguridad:mi_perfil' %}">Consultar mi perfil</a></div>{% endfor %}
+</div>
 {% endblock %}

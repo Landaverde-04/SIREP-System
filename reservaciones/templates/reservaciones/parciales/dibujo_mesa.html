@@ -1,0 +1,7 @@
+{% load reservaciones_extras %}{% with s=mesa.capacidad|sillas %}
+<div class="mesa-dibujo" aria-hidden="true">
+    <div class="mesa-sillas">{% for _ in s.arriba %}<span></span>{% endfor %}</div>
+    <div class="mesa-tablero" style="width: {{ s.ancho }}px">{{ mesa.numero }}{% if s.extra %}<small>+{{ s.extra }}</small>{% endif %}</div>
+    <div class="mesa-sillas">{% for _ in s.abajo %}<span></span>{% endfor %}</div>
+</div>
+{% endwith %}

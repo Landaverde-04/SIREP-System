@@ -28,8 +28,67 @@ de los ajustes específicos de SIREP.
 | `seguridad/` | Usuarios, sesiones, grupos y permisos heredados |
 | `administracion/` | Aplicación inicial para mesas, menú y clientes |
 | `reservaciones/` | Aplicación inicial para disponibilidad, reservas e ingreso |
-| `pedidos/` | Aplicación inicial para pedidos, preparación y entrega |
+| `pedidos/` | Pedidos por mesa, tablero de cocina y entrega |
 | `cobro/` | Aplicación inicial para consumo y cobro |
+
+## Módulo de reservaciones
+
+Implementa CU-01 a CU-07: consulta de disponibilidad, registro, modificación,
+cancelación y búsqueda de reservaciones, registro rápido de clientes e ingreso
+del cliente con o sin reservación, que abre la `Atencion` de la mesa.
+
+- Reglas de negocio en `reservaciones/servicios.py` (`ServicioDisponibilidad`,
+  `ServicioReservaciones`, `ServicioIngreso`) y en los modelos.
+- `administracion.Mesa` y `administracion.Cliente` contienen los datos mínimos
+  que necesita el módulo; administración completará sus pantallas.
+- `reservaciones.Atencion` representa la visita a una mesa. Pedidos y cobro se
+  asocian a ella; cobro la cierra con `atencion.cerrar()`, lo que libera la mesa.
+  `Atencion.abierta_de(mesa)` devuelve la atención en curso de una mesa.
+
+La consulta de disponibilidad muestra un mapa de mesas por ubicación (libre,
+reservada, ocupada o sin capacidad) y la agenda del día de cada mesa. La
+cantidad de personas es opcional en esa consulta.
+
+Gestión en administración (`/administracion/`): mesas (CU-16 a CU-19) y
+clientes con su historial (CU-24 y CU-25).
+
+Datos de prueba (mesas, clientes y roles «Anfitrión» y «Gerente»):
+
+```
+python manage.py migrate
+python manage.py datos_demo_reservaciones
+```
+
+Pruebas automáticas: `python manage.py test reservaciones`.
+
+## Módulo de pedidos
+
+Toma de pedidos por mesa, preparación en cocina y entrega (`/pedidos/`).
+
+- Un pedido pertenece a la `Atencion` abierta de su mesa (RN-05): solo se ofrecen
+  mesas ocupadas y, si la atención se cierra mientras se llena el formulario,
+  el guardado se rechaza. Los pedidos de visitas distintas nunca se mezclan.
+- Solo se piden productos habilitados y disponibles (RN-06). El precio se copia
+  del menú a cada línea (`DetallePedido.precio_unitario`), así que cambiar el
+  precio después no altera pedidos ya tomados ni su cobro.
+- Estados: Pendiente → En preparación → Listo → Entregado; Cancelado mientras no
+  esté listo. Solo un pedido pendiente puede editarse. Las transiciones viven en
+  `Pedido.TRANSICIONES` y se aplican con bloqueo de fila en `pedidos/servicios.py`.
+- Tablero de cocina (`/pedidos/cocina/`): pedidos en curso de atenciones abiertas,
+  los más antiguos primero, con botón de avance y recarga cada 30 segundos.
+- Permisos: `view_pedido`, `add_pedido`, `change_pedido` y el propio
+  `cambiar_estado_pedido`.
+- Para cobro: `Pedido.objects.de_atencion(a).facturables()` excluye los cancelados y
+  `.con_monto()` anota el total de cada pedido.
+
+Datos de prueba (menú y roles «Mesero» y «Cocina»):
+
+```
+python manage.py datos_demo_pedidos
+```
+
+Para tomar un pedido hace falta una mesa con atención abierta (registre un ingreso
+en `/reservaciones/ingresos/`). Pruebas automáticas: `python manage.py test pedidos`.
 
 ## Tecnologías
 
@@ -44,6 +103,83 @@ La conexión se configura con `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`
 y `DB_PORT`. Los nombres acordados son `sirep_db` y `sirep_user`, con una
 contraseña propia en cada computadora. Al repositorio se
 suben `.env.example`, `requirements.txt`, las migraciones y el código.
+
+### Datos para la prueba de humo
+
+En una base PostgreSQL de demostración, ejecuta:
+
+```bash
+python manage.py migrate
+python manage.py cargar_datos_demo
+```
+
+El comando carga las mesas 1 y 3 (capacidades 2 y 4), dos clientes y dos productos
+disponibles, Sopa del día y Pollo a la plancha, en las categorías Entradas y
+Platos fuertes. También crea los roles base y estas cuentas de prueba:
+
+| Cuenta | Rol |
+| --- | --- |
+| `admin` | Administrador y superusuario |
+| `gerente` | Gerente |
+| `anfitrion` | Anfitrión |
+| `mesero` | Mesero |
+| `cocina` | Encargado de cocina |
+| `cajero` | Cajero |
+
+En local, el comando solicita las contraseñas sin mostrarlas. En Render, configura
+`SIREP_DEMO_ADMIN_PASSWORD` para `admin` y `SIREP_DEMO_PASSWORD` para las
+otras cinco cuentas como variables secretas del servicio, y ejecuta
+`python manage.py cargar_datos_demo --no-input` después de migrar la base de
+demostración. Usa dos contraseñas distintas. Django aplica sus validadores al
+crear las cuentas.
+
+Puedes repetir el comando. Las cuentas, contraseñas, permisos y datos existentes
+se conservan. Para iniciar en local, ejecuta `python manage.py runserver`. Puedes
+usar la mesa 3 y el cliente Ana López para empezar la reservación de la prueba
+de humo.
+
+Para comenzar desde cero en una **base de demostración**, ejecuta
+`python manage.py cargar_datos_demo --reiniciar`. Este modo borra los registros
+de las tablas de SIREP en la base configurada y carga el juego de ejemplo en
+una sola transacción. Las migraciones aplicadas se conservan. En Render, usa
+el comando normal después de migrar para que los despliegues posteriores
+conserven los datos del servicio.
+
+## Despliegue en Render
+
+1. Crea una base **Render Postgres** y un **Web Service** de pago en la misma
+   región. Conecta el repositorio y selecciona la rama `dev` después de
+   integrar el PR de despliegue. Usa el entorno **Python** y la raíz del repo.
+2. En **Environment**, genera `SECRET_KEY` para el servicio y asigna a
+   `DATABASE_URL` la URL interna de Render Postgres. Render proporciona
+   `RENDER`, `RENDER_EXTERNAL_HOSTNAME` y `PORT`. El archivo
+   `.python-version` selecciona Python 3.12. Para un dominio propio, agrega
+   el host en `ALLOWED_HOSTS` y la URL HTTPS en `CSRF_TRUSTED_ORIGINS`.
+3. Configura los campos del servicio:
+
+| Campo | Valor |
+| --- | --- |
+| Build Command | `python -m pip install -r requirements.txt && python manage.py collectstatic --noinput` |
+| Pre-Deploy Command | `python manage.py migrate --noinput` |
+| Start Command | `python -m gunicorn sirep.wsgi:application --bind "0.0.0.0:$PORT"` |
+| Health Check Path | `/healthz/` |
+
+4. Para cargar la demostración una vez activo el servicio, agrega las dos
+   variables secretas de la sección anterior, aplica el cambio del entorno
+   y abre **Shell**. Ejecuta:
+
+```bash
+python manage.py cargar_datos_demo --no-input
+```
+
+5. Abre la URL HTTPS del servicio, inicia sesión y repite la prueba de humo.
+   Comprueba que carguen los recursos de la interfaz y que se pueda registrar
+   un cobro y consultar su historial.
+
+[Django en Render](https://render.com/docs/deploy-django) ·
+[Render Postgres](https://render.com/docs/postgresql-creating-connecting) ·
+[Comandos de despliegue](https://render.com/docs/deploys) ·
+[Verificaciones de salud](https://render.com/docs/health-checks)
 
 ## Convenciones
 

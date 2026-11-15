@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 
 {% block titulo %}{{ accion }} rol - SIREP{% endblock %}
 
@@ -11,7 +12,7 @@
     </a>
 </div>
 
-<div class="card shadow-sm mx-auto" style="max-width: 640px;">
+<div class="card shadow-sm mx-auto" style="max-width: 760px;">
     <div class="card-body p-4">
 
         {% if form.non_field_errors %}
@@ -31,29 +32,56 @@
                 {% endfor %}
             </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-medium">Permisos</label>
+            <fieldset class="mb-4" data-permisos-rol>
+                <legend class="h6 fw-medium mb-3">Permisos</legend>
                 {% if permisos_agrupados %}
-                    <div class="border rounded p-3">
-                        {% for app_label, permisos in permisos_agrupados %}
-                            <p class="text-uppercase fw-semibold mb-2"
-                               style="font-size: 0.7rem; letter-spacing: 0.06em; color: #6c757d;">
-                                {{ app_label }}
-                            </p>
-                            {% for item in permisos %}
-                                <div class="form-check">
-                                    <input class="form-check-input"
-                                           type="checkbox"
-                                           name="{{ form.permissions.html_name }}"
-                                           value="{{ item.pk }}"
-                                           id="perm_{{ item.pk }}"
-                                           {% if item.pk in permisos_seleccionados %}checked{% endif %}>
-                                    <label class="form-check-label" for="perm_{{ item.pk }}">
-                                        {{ item.label }}
-                                    </label>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 py-2 mb-2 rounded bg-body-tertiary" data-control-general hidden>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="permisos_todos" data-permisos-todos>
+                            <label class="form-check-label fw-medium" for="permisos_todos">Seleccionar todos los permisos</label>
+                        </div>
+                        <span class="text-body-secondary small" data-contador-general></span>
+                    </div>
+                    <div class="border rounded">
+                        {% for modulo in permisos_agrupados %}
+                            <div class="grupo-permisos{% if not forloop.last %} border-bottom{% endif %}" data-grupo-permisos>
+                                <div class="d-flex align-items-center flex-wrap gap-2 px-3 py-3">
+                                    <button type="button"
+                                            class="btn btn-link text-reset text-decoration-none d-flex flex-wrap align-items-center gap-2 p-0 flex-grow-1 text-start"
+                                            data-grupo-toggle aria-expanded="true" aria-controls="grupo_permisos_{{ forloop.counter }}">
+                                        <i class="bi bi-chevron-down icono-grupo-permisos" aria-hidden="true"></i>
+                                        <i class="bi {{ modulo.icono }} text-primary" aria-hidden="true"></i>
+                                        <span class="fw-semibold">{{ modulo.nombre }}</span>
+                                        <span class="badge rounded-pill text-bg-light text-body-secondary fw-normal" data-grupo-contador hidden></span>
+                                    </button>
+                                    <div class="form-check mb-0 flex-shrink-0" data-control-grupo hidden>
+                                        <input class="form-check-input" type="checkbox" id="grupo_todos_{{ forloop.counter }}" data-grupo-todos>
+                                        <label class="form-check-label small" for="grupo_todos_{{ forloop.counter }}">
+                                            Todos<span class="visually-hidden"> los permisos de {{ modulo.nombre }}</span>
+                                        </label>
+                                    </div>
                                 </div>
-                            {% endfor %}
-                            {% if not forloop.last %}<hr class="my-2">{% endif %}
+                                <div id="grupo_permisos_{{ forloop.counter }}" class="px-3 pb-3" data-grupo-cuerpo>
+                                    <div class="row row-cols-1 row-cols-sm-2 g-3">
+                                        {% for modelo in modulo.modelos %}
+                                            <div class="col">
+                                                <fieldset class="rounded bg-body-tertiary p-3 h-100">
+                                                    <legend class="float-none w-auto fw-semibold small mb-2">{{ modelo.nombre|capfirst }}</legend>
+                                                    {% for item in modelo.permisos %}
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                   name="{{ form.permissions.html_name }}" value="{{ item.pk }}"
+                                                                   id="perm_{{ item.pk }}" data-permiso
+                                                                   {% if item.seleccionado %}checked{% endif %}>
+                                                            <label class="form-check-label" for="perm_{{ item.pk }}">{{ item.label }}</label>
+                                                        </div>
+                                                    {% endfor %}
+                                                </fieldset>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
                         {% endfor %}
                     </div>
                 {% else %}
@@ -62,7 +90,7 @@
                 {% for error in form.permissions.errors %}
                     <div class="text-danger small mt-1">{{ error }}</div>
                 {% endfor %}
-            </div>
+            </fieldset>
 
             <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
@@ -75,4 +103,12 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'seguridad/css/form-rol.css' %}">
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'seguridad/js/form-rol.js' %}"></script>
 {% endblock %}

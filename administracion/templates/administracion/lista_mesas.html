@@ -1,0 +1,53 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}Mesas - SIREP{% endblock %}
+
+{% block estilos_extra %}
+<link rel="stylesheet" href="{% static 'reservaciones/css/reservaciones.css' %}">
+{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0 fw-semibold">Mesas</h4>
+        {% if filas %}<small class="text-muted">{{ total_activas }} habilitadas · capacidad total {{ capacidad_total }} personas</small>{% endif %}
+    </div>
+    {% if perms.administracion.add_mesa %}
+    <a href="{% url 'administracion:crear_mesa' %}" class="btn btn-primary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-plus-lg"></i> Registrar mesa
+    </a>
+    {% endif %}
+</div>
+
+{% if filas %}
+<div class="mesa-grid">
+    {% for fila in filas %}
+    {% with mesa=fila.mesa %}
+    <a href="{% url 'administracion:detalle_mesa' mesa.pk %}"
+       class="mesa-tile {% if not mesa.activo %}estado-deshabilitada{% elif fila.ocupada %}estado-ocupada{% else %}estado-libre{% endif %}">
+        {% include "reservaciones/parciales/dibujo_mesa.html" %}
+        <span class="mesa-estado">{% if not mesa.activo %}Deshabilitada{% elif fila.ocupada %}Ocupada{% else %}Disponible{% endif %}</span>
+        <span class="mesa-info">
+            {{ mesa.capacidad }} persona{{ mesa.capacidad|pluralize }}<br>
+            {{ mesa.ubicacion|default:"Sin ubicación" }}
+        </span>
+        {% if mesa.reservaciones_hoy %}
+        <span class="badge rounded-pill text-bg-light border"><i class="bi bi-calendar-check"></i> {{ mesa.reservaciones_hoy }} hoy</span>
+        {% endif %}
+    </a>
+    {% endwith %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5 text-muted">
+    <i class="bi bi-grid-3x3-gap fs-1 d-block mb-3 opacity-25"></i>
+    <p class="mb-3">No hay mesas registradas.</p>
+    {% if perms.administracion.add_mesa %}
+    <a href="{% url 'administracion:crear_mesa' %}" class="btn btn-primary btn-sm">Registrar la primera</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{# Busca y selecciona un cliente (CU-07 paso 5 / CU-03 1a). Requiere modal_cliente.html fuera del formulario. #}
+<div class="mb-3" id="selector-cliente"
+     data-url-buscar="{% url 'reservaciones:buscar_clientes' %}">
+    <label class="form-label" for="cliente-buscar">
+        Cliente{% if opcional %} <span class="text-muted small">(opcional)</span>{% endif %}
+    </label>
+    <input type="hidden" name="cliente" id="id_cliente" value="{{ cliente_seleccionado.pk|default:'' }}">
+
+    <div id="cliente-elegido" class="d-flex align-items-center justify-content-between border rounded px-3 py-2 bg-white {% if not cliente_seleccionado %}d-none{% endif %}">
+        <span><i class="bi bi-person-check text-success me-2"></i><span id="cliente-elegido-texto">{% if cliente_seleccionado %}{{ cliente_seleccionado.nombre }} · {{ cliente_seleccionado.telefono }}{% endif %}</span></span>
+        <button type="button" id="cliente-quitar" class="btn btn-sm btn-link">Cambiar</button>
+    </div>
+
+    <div id="cliente-busqueda" class="{% if cliente_seleccionado %}d-none{% endif %}">
+        <div class="input-group">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-muted small"></i></span>
+            <input type="text" id="cliente-buscar" class="form-control {% if campo.errors %}is-invalid{% endif %}"
+                   placeholder="Buscar por nombre o teléfono" autocomplete="off">
+            {% if perms.administracion.add_cliente %}
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCliente">
+                <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Nuevo cliente</span>
+            </button>
+            {% endif %}
+        </div>
+        <div id="cliente-resultados" class="list-group mt-1"></div>
+    </div>
+    {% for error in campo.errors %}
+        <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+</div>

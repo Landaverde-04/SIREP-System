@@ -1,0 +1,28 @@
+{% extends "cobro/base_cobro.html" %}
+
+{% block encabezado %}Historial de cobros{% endblock %}
+{% block cobro_contenido %}
+<p class="text-muted small mb-4">Consulte los pagos confirmados y su desglose histórico.</p>
+<section class="card border-0 shadow-sm mb-4" aria-label="Resumen del historial">
+    <div class="card-body p-3">
+        <dl class="row g-3 mb-0">
+            <div class="col-sm-6">
+                <dt class="small text-muted fw-normal mb-1">Total cobrado</dt>
+                <dd class="h4 fw-semibold cobro-dinero mb-0">$ {{ resumen.total_cobrado|floatformat:"2u" }}</dd>
+            </div>
+            <div class="col-sm-6">
+                <dt class="small text-muted fw-normal mb-1">Cobros registrados</dt>
+                <dd class="h4 fw-semibold mb-0">{{ resumen.cobros_registrados }}</dd>
+            </div>
+        </dl>
+    </div>
+</section>
+<div class="card border-0 shadow-sm"><div class="table-responsive">
+    <table class="table align-middle cobro-tabla mb-0">
+        <caption class="visually-hidden">Historial de cobros confirmados.</caption>
+        <thead class="table-light"><tr><th scope="col">Cobro</th><th scope="col">Mesa / Atención</th><th scope="col">Fecha</th><th scope="col">Cajero</th><th scope="col">Medio</th><th scope="col" class="text-end">Total</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead>
+        <tbody>{% for cobro in pagina %}<tr><td class="fw-medium">#{{ cobro.pk }}</td><td>{{ cobro.atencion.mesa }} / #{{ cobro.atencion_id }}</td><td class="text-nowrap">{{ cobro.fecha_hora_pago|date:"d/m/Y H:i" }}</td><td>{{ cobro.cajero.get_full_name|default:cobro.cajero.username }}</td><td>{{ cobro.get_forma_pago_display }}</td><td class="text-end text-nowrap fw-medium">$ {{ cobro.total|floatformat:2 }}</td><td><a class="btn btn-sm btn-outline-secondary" href="{% url 'cobro:detalle_cobro' cobro.pk %}">Ver<span class="visually-hidden"> cobro {{ cobro.pk }}</span></a></td></tr>{% empty %}<tr><td colspan="7" class="text-center text-muted py-5">Todavía no hay cobros registrados.</td></tr>{% endfor %}</tbody>
+    </table>
+</div></div>
+{% include "cobro/parciales/paginacion.html" %}
+{% endblock %}

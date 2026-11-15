@@ -1,0 +1,37 @@
+{% extends "cobro/base_cobro.html" %}
+
+{% block encabezado %}Atenciones por cobrar{% endblock %}
+{% block cobro_contenido %}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body d-flex align-items-center justify-content-between flex-wrap gap-3 p-4">
+        <div>
+            <h2 class="h6 fw-semibold">Seleccione una atención</h2>
+            <p class="text-muted small mb-0">Consulte los productos solicitados y confirme el pago cuando todos los pedidos estén resueltos.</p>
+        </div>
+        <div class="text-end"><span class="h3 fw-semibold mb-0">{{ pagina.paginator.count }}</span><span class="d-block text-muted small">atenciones abiertas</span></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    {% for atencion in pagina %}
+    <div class="col-md-6 col-xl-4">
+        <article class="card shadow-sm h-100 cobro-atencion">
+            <div class="card-body p-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <div><span class="text-muted small">Atención #{{ atencion.pk }}</span><h2 class="h5 fw-semibold mt-1 mb-0">Mesa {{ atencion.mesa.numero }}</h2></div>
+                    {% if atencion.pedidos_pendientes %}<span class="badge text-bg-warning">{{ atencion.pedidos_pendientes }} en curso</span>{% else %}<span class="badge text-bg-light border">Sin pendientes</span>{% endif %}
+                </div>
+                <p class="mb-2">{{ atencion.cliente.nombre|default:"Cliente sin registro" }}</p>
+                <p class="small text-muted mb-4">Ingreso {{ atencion.fecha_hora_ingreso|date:"d/m/Y H:i" }}</p>
+                <a href="{% url 'cobro:detalle_consumo' atencion.pk %}" class="btn btn-outline-dark w-100 mt-auto">Consultar consumo <i class="bi bi-arrow-right ms-2" aria-hidden="true"></i><span class="visually-hidden"> de la mesa {{ atencion.mesa.numero }}</span></a>
+            </div>
+        </article>
+    </div>
+    {% empty %}
+    <div class="col-12"><div class="card border-0 shadow-sm"><div class="card-body text-center py-5">
+        <h2 class="h5">No hay atenciones por cobrar</h2><p class="text-muted mb-0">Las nuevas atenciones abiertas aparecerán aquí.</p>
+    </div></div></div>
+    {% endfor %}
+</div>
+{% include "cobro/parciales/paginacion.html" %}
+{% endblock %}

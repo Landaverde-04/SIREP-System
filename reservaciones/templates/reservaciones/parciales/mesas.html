@@ -1,0 +1,28 @@
+{# Lista de mesas disponibles como opciones seleccionables. #}
+{# Variables: mesas, seleccion (pk como texto), campo (campo "mesa" del formulario), mesa_actual (opcional) #}
+{% if mesas %}
+    <div class="row g-2 mb-2">
+        {% for mesa in mesas %}
+        <div class="col-6 col-md-4 col-xl-3">
+            <input type="radio" class="btn-check" name="mesa" id="mesa-{{ mesa.pk }}" value="{{ mesa.pk }}"
+                   autocomplete="off" {% if seleccion == mesa.pk|stringformat:"s" %}checked{% endif %}>
+            <label class="btn btn-outline-primary w-100 text-start mesa-opcion" for="mesa-{{ mesa.pk }}">
+                <span class="fw-semibold d-flex justify-content-between align-items-center">
+                    Mesa {{ mesa.numero }}
+                    {% if mesa_actual and mesa.pk == mesa_actual.pk %}<span class="badge text-bg-light border">Asignada</span>{% endif %}
+                </span>
+                <small class="d-block"><i class="bi bi-people"></i> {{ mesa.capacidad }} personas</small>
+                <small class="d-block text-truncate opacity-75">{{ mesa.ubicacion|default:"Sin ubicación" }}</small>
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-warning d-flex gap-2 align-items-start mb-2">
+        <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+        <div>{{ mensaje_sin_mesas|default:"No hay mesas libres con capacidad suficiente en ese período. Cambie la fecha, la hora o la duración." }}</div>
+    </div>
+{% endif %}
+{% for error in campo.errors %}
+    <div class="invalid-feedback d-block mb-2">{{ error }}</div>
+{% endfor %}

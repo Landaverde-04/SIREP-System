@@ -1,0 +1,106 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block titulo %}{{ accion }} pedido - SIREP{% endblock %}
+
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0 fw-semibold">{{ accion }} pedido{% if pedido %} #{{ pedido.id }}{% endif %}</h4>
+    <a href="{% if pedido %}{% url 'pedidos:detalle_pedido' pedido.id %}{% else %}{% url 'pedidos:lista_pedidos' %}{% endif %}"
+       class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-left"></i> Volver
+    </a>
+</div>
+
+<div class="card shadow-sm mx-auto" style="max-width: 900px;">
+    <div class="card-body p-4">
+
+        {% if sin_mesas %}
+            <div class="alert alert-warning">
+                No hay mesas con una atención abierta. Registre primero el ingreso del cliente
+                {% if perms.reservaciones.add_atencion %}
+                    en <a href="{% url 'reservaciones:panel_ingresos' %}" class="alert-link">Ingreso de clientes</a>.
+                {% else %}
+                    (lo hace el anfitrión).
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+        {% endif %}
+        {% if formset.non_form_errors %}
+            <div class="alert alert-danger">
+                {% for error in formset.non_form_errors %}{{ error }}{% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            {{ formset.management_form }}
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <label for="{{ form.mesa.id_for_label }}" class="form-label fw-medium">Mesa</label>
+                    {{ form.mesa }}
+                    {% for error in form.mesa.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                <div class="col-md-8">
+                    <label for="{{ form.notas.id_for_label }}" class="form-label fw-medium">Notas del pedido</label>
+                    {{ form.notas }}
+                    {% for error in form.notas.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="form-label fw-medium mb-0">Productos</label>
+                <button type="button" id="btn-agregar-detalle" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
+                    <i class="bi bi-plus-lg"></i> Agregar producto
+                </button>
+            </div>
+
+            <div class="table-responsive border rounded mb-4">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Nota</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="detalles-cuerpo">
+                        {% for detalle_form in formset %}
+                            {% include "pedidos/_fila_detalle.html" with form=detalle_form %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <template id="detalle-plantilla">
+                {% include "pedidos/_fila_detalle.html" with form=formset.empty_form %}
+            </template>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary d-flex align-items-center gap-2">
+                    <i class="bi bi-check-lg"></i> {% if pedido %}Guardar cambios{% else %}Registrar pedido{% endif %}
+                </button>
+                <a href="{% if pedido %}{% url 'pedidos:detalle_pedido' pedido.id %}{% else %}{% url 'pedidos:lista_pedidos' %}{% endif %}"
+                   class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="{% static 'pedidos/js/pedido_form.js' %}"></script>
+{% endblock %}
