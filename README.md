@@ -126,12 +126,9 @@ Platos fuertes. También crea los roles base y estas cuentas de prueba:
 | `cocina` | Encargado de cocina |
 | `cajero` | Cajero |
 
-En local, el comando solicita las contraseñas sin mostrarlas. En Render, configura
-`SIREP_DEMO_ADMIN_PASSWORD` para `admin` y `SIREP_DEMO_PASSWORD` para las
-otras cinco cuentas como variables secretas del servicio, y ejecuta
-`python manage.py cargar_datos_demo --no-input` después de migrar la base de
-demostración. Usa dos contraseñas distintas. Django aplica sus validadores al
-crear las cuentas.
+En local, el comando solicita las contraseñas sin mostrarlas. En Render, el
+Build Command carga la demostración después de aplicar las migraciones.
+Django aplica sus validadores al crear las cuentas.
 
 Puedes repetir el comando. Las cuentas, contraseñas, permisos y datos existentes
 se conservan. Para iniciar en local, ejecuta `python manage.py runserver`. Puedes
@@ -145,40 +142,47 @@ una sola transacción. Las migraciones aplicadas se conservan. En Render, usa
 el comando normal después de migrar para que los despliegues posteriores
 conserven los datos del servicio.
 
-## Despliegue en Render
+## Despliegue gratuito en Render
 
-1. Crea una base **Render Postgres** y un **Web Service** de pago en la misma
-   región. Conecta el repositorio y selecciona la rama `dev` después de
-   integrar el PR de despliegue. Usa el entorno **Python** y la raíz del repo.
-2. En **Environment**, genera `SECRET_KEY` para el servicio y asigna a
-   `DATABASE_URL` la URL interna de Render Postgres. Render proporciona
-   `RENDER`, `RENDER_EXTERNAL_HOSTNAME` y `PORT`. El archivo
-   `.python-version` selecciona Python 3.12. Para un dominio propio, agrega
-   el host en `ALLOWED_HOSTS` y la URL HTTPS en `CSRF_TRUSTED_ORIGINS`.
-3. Configura los campos del servicio:
+1. Crea una base **Render Postgres** con el plan **Free**. Copia su
+   **Internal Database URL**.
+2. Crea un **Web Service** con el plan **Free** en la misma región. Conecta
+   el repositorio de SIREP, selecciona la rama `dev`, el entorno **Python**
+   y la raíz del repositorio. El archivo `.python-version` selecciona Python 3.12.
+3. Antes del primer deploy, añade las siguientes variables en **Environment**:
+
+| Variable | Valor |
+| --- | --- |
+| `DATABASE_URL` | URL interna de Render Postgres. |
+| `SECRET_KEY` | Clave nueva generada para este servicio. |
+| `SIREP_DEMO_ADMIN_PASSWORD` | Contraseña de la cuenta `admin`. |
+| `SIREP_DEMO_PASSWORD` | Contraseña de las cinco cuentas operativas. |
+
+   Usa dos contraseñas fuertes y distintas. Render proporciona
+   `RENDER`, `RENDER_EXTERNAL_HOSTNAME` y `PORT`. Para un dominio propio,
+   agrega el host en `ALLOWED_HOSTS` y la URL HTTPS en `CSRF_TRUSTED_ORIGINS`.
+
+4. Configura los campos del servicio. El plan **Free** no ofrece **Shell** ni
+   **Pre-Deploy Command**, así que las migraciones y la carga inicial se
+   ejecutan como parte del **Build Command**.
 
 | Campo | Valor |
 | --- | --- |
-| Build Command | `python -m pip install -r requirements.txt && python manage.py collectstatic --noinput` |
-| Pre-Deploy Command | `python manage.py migrate --noinput` |
+| Build Command | `python -m pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput && python manage.py cargar_datos_demo --no-input` |
 | Start Command | `python -m gunicorn sirep.wsgi:application --bind "0.0.0.0:$PORT"` |
 | Health Check Path | `/healthz/` |
 
-4. Para cargar la demostración una vez activo el servicio, agrega las dos
-   variables secretas de la sección anterior, aplica el cambio del entorno
-   y abre **Shell**. Ejecuta:
+5. Cuando el servicio esté activo, abre su URL HTTPS, inicia sesión como
+   `admin` y repite la prueba de humo. La carga normal agrega los registros
+   faltantes en cada deploy y conserva los datos existentes.
 
-```bash
-python manage.py cargar_datos_demo --no-input
-```
-
-5. Abre la URL HTTPS del servicio, inicia sesión y repite la prueba de humo.
-   Comprueba que carguen los recursos de la interfaz y que se pueda registrar
-   un cobro y consultar su historial.
+El Web Service se suspende después de 15 minutos sin tráfico. La primera
+visita posterior puede tardar mientras arranca. Render Postgres Free
+vence 30 días después de su creación.
 
 [Django en Render](https://render.com/docs/deploy-django) ·
 [Render Postgres](https://render.com/docs/postgresql-creating-connecting) ·
-[Comandos de despliegue](https://render.com/docs/deploys) ·
+[Límites del plan gratuito](https://render.com/docs/free) ·
 [Verificaciones de salud](https://render.com/docs/health-checks)
 
 ## Convenciones
